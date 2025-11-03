@@ -2,20 +2,36 @@ import React, { useState } from "react";
 import { Lock, Mail, Shield } from "lucide-react";
 
 export default function LoginForm({ onLogin }) {
-  const [email, setEmail] = useState("demo@ztna.com");
-  const [password, setPassword] = useState("demo123");
+  const [email, setEmail] = useState("alice@company.com"); // sample user
+  const [password, setPassword] = useState("password123");
   const [message, setMessage] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setMessage("⏳ Authenticating...");
-    setTimeout(() => {
-      if (email === "demo@ztna.com" && password === "demo123") {
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        // ✅ Save token so API calls (like VPN) can use it
+        localStorage.setItem("token", data.token);
+        console.log(data.token,data)
+
         setMessage("✅ Login successful! Redirecting...");
-        onLogin("fake-demo-token-12345");
+        onLogin?.(data.token); // send user info to parent (optional)
       } else {
-        setMessage("❌ Invalid credentials");
+        setMessage("❌ " + (data.error || "Invalid credentials"));
       }
-    }, 800);
+    } catch (err) {
+      console.error("Login error:", err);
+      setMessage("❌ Unable to connect to server");
+    }
   };
 
   return (
@@ -28,10 +44,12 @@ export default function LoginForm({ onLogin }) {
         <h2 className="text-2xl font-bold text-gray-800 mt-4 tracking-tight">
           Login to ZTNA Demo
         </h2>
-        <p className="text-sm text-gray-500 mt-1">(Demo credentials auto-filled)</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Use credentials from backend (e.g., alice@company.com)
+        </p>
       </div>
 
-      {/* Email Field */}
+      {/* Email */}
       <div className="mb-4 relative">
         <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
         <input
@@ -43,7 +61,7 @@ export default function LoginForm({ onLogin }) {
         />
       </div>
 
-      {/* Password Field */}
+      {/* Password */}
       <div className="mb-6 relative">
         <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
         <input
@@ -60,7 +78,7 @@ export default function LoginForm({ onLogin }) {
         onClick={handleLogin}
         className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-700 hover:to-indigo-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-purple-300/40"
       >
-        Quick Login
+        Login
       </button>
 
       {/* Status Message */}

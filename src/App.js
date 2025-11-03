@@ -1,16 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
 
 export default function App() {
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+  // Persist token in localStorage
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("token", token);
+    } else {
+      localStorage.removeItem("token");
+    }
+  }, [token]);
+
+  // Optional: verify token on mount
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch("http://127.0.0.1:5000/api/auth/verify", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          console.warn("Token invalid or expired");
+          setToken(null);
+        }
+      } catch (err) {
+        console.error("Token verification failed:", err);
+        setToken(null);
+      }
+    };
+    verifyToken();
+  }, []); // runs once
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-white via-gray-50 to-violet-50 text-gray-900 relative overflow-hidden font-sans">
-      {/* Thicker orange grid background */}
+      {/* Background Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,165,0,0.12)_2px,transparent_2px),linear-gradient(to_bottom,rgba(255,165,0,0.12)_2px,transparent_2px)] bg-[length:40px_40px] pointer-events-none"></div>
 
-      {/* Main Section */}
       <main className="relative z-10 flex flex-col items-center justify-center px-6 py-5">
         {!token ? (
           <div className="animate-fadeIn w-full max-w-md">
@@ -46,4 +74,3 @@ export default function App() {
     </div>
   );
 }
-

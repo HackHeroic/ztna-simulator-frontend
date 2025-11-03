@@ -1,19 +1,37 @@
 import React, { useState } from "react";
 import { Wifi, WifiOff, Loader2, Shield } from "lucide-react";
+import { requestVpnAccess } from "../api/api"; // ✅ import backend API call
 
 export default function VpnPanel({ connected, setConnected }) {
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     setLoading(true);
-    setStatusMsg("⏳ Establishing secure VPN tunnel...");
-    setTimeout(() => {
+    setStatusMsg("⏳ Requesting secure VPN tunnel...");
+  
+    const res = await requestVpnAccess(); // ✅ backend call
+  
+    if (res.error) {
+      // handle expired / unauthorized error gracefully
+      if (res.error.toLowerCase().includes("unauthorized") || res.error.toLowerCase().includes("login")) {
+        setStatusMsg("🔒 " + res.error);
+        setTimeout(() => {
+          window.location.href = "/login"; // redirect to login if expired
+        }, 1500);
+      } else {
+        setStatusMsg("❌ " + res.error);
+      }
+    } else {
       setConnected(true);
-      setLoading(false);
-      setStatusMsg("✅ Connected • Throughput: 1 Gbps • Latency: 50 ms");
-    }, 1200);
+      setStatusMsg(
+        `✅ Connected to ${res.vpn_server}:${res.vpn_port} • Token issued • TTL 30 mins`
+      );
+    }
+  
+    setLoading(false);
   };
+  
 
   const handleDisconnect = () => {
     setConnected(false);
@@ -22,10 +40,7 @@ export default function VpnPanel({ connected, setConnected }) {
 
   return (
     <div className="relative bg-white/90 border border-gray-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-500 p-8 font-sans overflow-hidden">
-      {/* 🔶 Subtle orange grid background */}
       <div className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_right,rgba(255,165,0,0.08)_1.5px,transparent_1.5px),linear-gradient(to_bottom,rgba(255,165,0,0.08)_1.5px,transparent_1.5px)] bg-[length:36px_36px] pointer-events-none"></div>
-
-      {/* ✨ Gradient outline / glow border */}
       <div className="absolute inset-0 rounded-3xl border-[3px] border-transparent bg-[linear-gradient(120deg,rgba(255,140,0,0.3),rgba(236,72,153,0.25),rgba(79,70,229,0.3))] opacity-40 pointer-events-none"></div>
 
       {/* Header */}
