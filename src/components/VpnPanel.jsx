@@ -1,123 +1,284 @@
-import React, { useState } from "react";
-import { Wifi, WifiOff, Loader2, Shield } from "lucide-react";
-import { requestVpnAccess } from "../api/api"; // ✅ import backend API call
+import React, { useState, useEffect } from "react";
 
-export default function VpnPanel({ connected, setConnected }) {
-  const [statusMsg, setStatusMsg] = useState("");
+export default function VpnDashboard() {
+  const [token, setToken] = useState(localStorage.getItem("vpn_token") || "");
+  const [connectionId, setConnectionId] = useState("");
+  const [clientIp, setClientIp] = useState("127.0.0.1");
+  const [device, setDevice] = useState({
+    os_type: "Unknown",
+    os_version: "Unknown",
+    encrypted: true,
+  });
+  const [status, setStatus] = useState(null);
+  const [connections, setConnections] = useState([]);
+  const [routes, setRoutes] = useState(null);
+  const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [activityLog, setActivityLog] = useState([]);
 
+  const addLog = (event) => {
+    setActivityLog((prev) => [
+      { time: new Date().toLocaleTimeString(), event },
+      ...prev.slice(0, 19),
+    ]);
+  };
+
+  useEffect(() => {
+    fetch("https://api64.ipify.org?format=json")
+      .then((res) => res.json())
+      .then((d) => {
+        setClientIp(d.ip);
+        addLog(`🌐 Client IP: ${d.ip}`);
+      })
+      .catch(() => {
+        setClientIp("127.0.0.1");
+        addLog("⚠️ Failed to fetch IP");
+      });
+  }, []);
+
+  // ---------------------- API HANDLERS ----------------------
   const handleConnect = async () => {
+    if (!token) return setMessage("Please set token first");
+
     setLoading(true);
-    setStatusMsg("⏳ Requesting secure VPN tunnel...");
-  
-    const res = await requestVpnAccess(); // ✅ backend call
-  
-    if (res.error) {
-      // handle expired / unauthorized error gracefully
-      if (res.error.toLowerCase().includes("unauthorized") || res.error.toLowerCase().includes("login")) {
-        setStatusMsg("🔒 " + res.error);
-        setTimeout(() => {
-          window.location.href = "/login"; // redirect to login if expired
-        }, 1500);
+    addLog("🔌 Connecting...");
+
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vpn_token: token, client_ip: clientIp, device }),
+      });
+      const data = await res.json();
+      setMessage(JSON.stringify(data, null, 2));
+
+      if (data.connection_id) {
+        setConnectionId(data.connection_id);
+        addLog(`🟢 Connected | ID: ${data.connection_id}`);
       } else {
-        setStatusMsg("❌ " + res.error);
+        addLog("⚠️ No connection ID returned");
       }
-    } else {
-      setConnected(true);
-      setStatusMsg(
-        `✅ Connected to ${res.vpn_server}:${res.vpn_port} • Token issued • TTL 30 mins`
-      );
+    } catch (err) {
+      addLog("❌ Connect error: " + err.message);
     }
-  
+
     setLoading(false);
   };
-  
 
-  const handleDisconnect = () => {
-    setConnected(false);
-    setStatusMsg("🔴 VPN disconnected");
+  const handleDisconnect = async () => {
+    if (!connectionId) return;
+
+    setLoading(true);
+    addLog("🔴 Disconnecting...");
+
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connection_id: connectionId }),
+      });
+      const data = await res.json();
+      setMessage(JSON.stringify(data, null, 2));
+      setConnectionId("");
+      addLog("🛑 Disconnected");
+    } catch (err) {
+      addLog("❌ Disconnect error: " + err.message);
+    }
+
+    setLoading(false);
   };
 
+  const handleStatus = async () => {
+    if (!connectionId) return;
+
+    setLoading(true);
+    addLog("🔍 Checking status...");
+
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connection_id: connectionId }),
+      });
+      const data = await res.json();
+      setStatus(data);
+      setMessage(JSON.stringify(data, null, 2));
+      addLog("📊 Status received");
+    } catch (err) {
+      addLog("❌ Status error: " + err.message);
+    }
+
+    setLoading(false);
+  };
+
+  const handleConnections = async () => {
+    setLoading(true);
+    addLog("📡 Fetching connections...");
+
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/connections");
+      const data = await res.json();
+      setConnections(data);
+      setMessage(JSON.stringify(data, null, 2));
+      addLog("📌 Active connections loaded");
+    } catch (err) {
+      addLog("❌ Fetch error: " + err.message);
+    }
+
+    setLoading(false);
+  };
+
+  const handleRoutes = async () => {
+    if (!connectionId) return;
+
+    setLoading(true);
+    addLog("📍 Fetching routes...");
+
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/routes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connection_id: connectionId }),
+      });
+      const data = await res.json();
+      setRoutes(data);
+      setMessage(JSON.stringify(data, null, 2));
+      addLog("🗺 Routes fetched");
+    } catch (err) {
+      addLog("❌ Route error: " + err.message);
+    }
+
+    setLoading(false);
+  };
+
+  const handleHealth = async () => {
+    setLoading(true);
+    addLog("❤️ Checking health...");
+
+    try {
+      const res = await fetch("http://localhost:5001/health");
+      const data = await res.json();
+      setHealth(data);
+      setMessage(JSON.stringify(data, null, 2));
+      addLog("💚 Health ok");
+    } catch (err) {
+      addLog("❌ Health error: " + err.message);
+    }
+
+    setLoading(false);
+  };
+
+  // --------------------------------------------------------------------
+  // ----------------------------- UI ----------------------------------
+  // --------------------------------------------------------------------
+
   return (
-    <div className="relative bg-white/90 border border-gray-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-500 p-8 font-sans overflow-hidden">
-      <div className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_right,rgba(255,165,0,0.08)_1.5px,transparent_1.5px),linear-gradient(to_bottom,rgba(255,165,0,0.08)_1.5px,transparent_1.5px)] bg-[length:36px_36px] pointer-events-none"></div>
-      <div className="absolute inset-0 rounded-3xl border-[3px] border-transparent bg-[linear-gradient(120deg,rgba(255,140,0,0.3),rgba(236,72,153,0.25),rgba(79,70,229,0.3))] opacity-40 pointer-events-none"></div>
+    <div className="min-h-screen p-6 bg-gray-100 font-sans">
 
-      {/* Header */}
-      <div className="relative flex flex-col items-center mb-6">
-        <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-violet-600 text-white shadow-md">
-          <Shield className="w-6 h-6" />
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold text-center text-gray-800 mb-10">
+        🛡 VPN Backend Dashboard
+      </h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+
+        {/* LEFT */}
+        <div className="space-y-8">
+
+          {/* TOKEN */}
+          <div className="bg-white rounded-2xl p-6 shadow border">
+            <label className="text-sm font-semibold text-gray-700">VPN Token</label>
+            <input
+              value={token}
+              onChange={(e) => {
+                setToken(e.target.value);
+                localStorage.setItem("vpn_token", e.target.value);
+              }}
+              className="mt-2 w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter JWT token..."
+            />
+          </div>
+
+          {/* BUTTONS */}
+          <div className="grid grid-cols-3 gap-3 bg-white p-6 rounded-2xl shadow border">
+
+            <button onClick={handleConnect} disabled={loading}
+              className="btn-primary">
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="wifi-symbol animate-wifi"></span>
+                  Connecting
+                </span>
+              ) : "Connect"}
+            </button>
+
+            <button onClick={handleDisconnect} 
+              className="btn-danger">Disconnect</button>
+
+            <button onClick={handleStatus} className="btn-secondary">Status</button>
+
+            <button onClick={handleConnections} className="btn-neutral">List</button>
+
+            <button onClick={handleRoutes} className="btn-secondary">Routes</button>
+
+            <button onClick={handleHealth} className="btn-info">Health</button>
+
+          </div>
+
+          {/* OUTPUT */}
+          <div className="bg-white rounded-2xl p-5 border shadow h-72 overflow-auto">
+            <h2 className="font-semibold text-sm mb-2">Output</h2>
+            <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+              {message || "📤 Press an action button to begin."}
+            </pre>
+          </div>
+
         </div>
-        <h3 className="mt-3 text-xl font-semibold tracking-tight text-gray-900 font-display">
-          VPN Gateway
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">ZTNA Secure Tunnel</p>
-      </div>
 
-      {/* Status Icon */}
-      <div className="relative flex flex-col items-center">
-        <div
-          className={`relative w-24 h-24 flex items-center justify-center rounded-full mb-5 transition-all duration-700 ${
-            connected
-              ? "bg-gradient-to-br from-orange-50 to-pink-50 text-orange-600 ring-4 ring-orange-300/50 animate-pulse-soft"
-              : "bg-gray-100 text-gray-400"
-          }`}
-        >
-          {loading ? (
-            <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
-          ) : connected ? (
-            <Wifi className="w-10 h-10" />
-          ) : (
-            <WifiOff className="w-10 h-10" />
-          )}
+        {/* RIGHT */}
+        <div className="space-y-8">
+
+          {/* ACTIVITY LOG */}
+          <div className="bg-white rounded-2xl p-5 border shadow h-80 overflow-auto">
+            <h2 className="font-semibold text-sm mb-2">Activity Log</h2>
+
+            {activityLog.length ? activityLog.map((log, i) => (
+              <div key={i}
+                className="p-3 mb-2 rounded-xl bg-gray-50 border hover:bg-gray-100 transition">
+                <p className="text-xs font-medium">{log.event}</p>
+                <p className="text-[11px] text-gray-500">{log.time}</p>
+              </div>
+            )) : <p className="text-xs text-gray-500 italic">No activity yet.</p>}
+          </div>
+
+          {/* CONNECTIONS */}
+          <div className="bg-white rounded-2xl p-5 border shadow h-80 overflow-auto">
+            <h2 className="font-semibold text-sm mb-4">Active Connections</h2>
+
+            {connections.length ? connections.map((c, i) => (
+              <div key={i}
+                className="p-3 mb-3 rounded-xl bg-gray-50 border hover:bg-gray-100 transition">
+                <p><strong>User:</strong> {c.user}</p>
+                <p><strong>VPN IP:</strong> {c.vpn_ip}</p>
+                <p><strong>ID:</strong> {c.connection_id}</p>
+
+                <span className={`mt-2 inline-block px-2 py-1 rounded-full text-[10px] ${
+                  c.status === "active"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}>
+                  {c.status.toUpperCase()}
+                </span>
+              </div>
+            )) : (
+              <p className="text-xs text-gray-500 italic">No active connections.</p>
+            )}
+          </div>
+
         </div>
 
-        {/* Buttons */}
-        {!connected ? (
-          <button
-            onClick={handleConnect}
-            disabled={loading}
-            className={`px-6 py-2.5 rounded-full font-medium text-white bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 transition-all shadow-md active:scale-95 hover:shadow-orange-300/40 ${
-              loading && "opacity-70 cursor-not-allowed"
-            }`}
-          >
-            {loading ? "Connecting..." : "Connect VPN"}
-          </button>
-        ) : (
-          <button
-            onClick={handleDisconnect}
-            className="px-6 py-2.5 rounded-full font-medium text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 transition-all shadow-md active:scale-95 hover:shadow-red-300/40"
-          >
-            Disconnect
-          </button>
-        )}
-
-        {/* Status Message */}
-        {statusMsg && (
-          <p
-            className={`mt-5 text-sm font-medium px-4 py-2.5 rounded-xl border shadow-inner tracking-tight ${
-              statusMsg.includes("✅")
-                ? "text-green-700 bg-green-50 border-green-100"
-                : statusMsg.includes("🔴")
-                ? "text-red-700 bg-red-50 border-red-100"
-                : "text-gray-700 bg-gray-50 border-gray-100"
-            }`}
-          >
-            {statusMsg}
-          </p>
-        )}
       </div>
-
-      {/* Pulse Animation */}
-      <style>{`
-        @keyframes pulse-soft {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(255,165,0,0.4); }
-          50% { box-shadow: 0 0 25px 10px rgba(255,165,0,0.1); }
-        }
-        .animate-pulse-soft {
-          animation: pulse-soft 2.8s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
