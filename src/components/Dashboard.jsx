@@ -79,17 +79,21 @@ const Stat = ({ icon: Icon, label, value, color }) => (
 /** 1️⃣ Evaluate a specific resource using /api/policy/evaluate */
 async function evaluateResource(resource) {
   try {
+    // Get real IP + location first
+    const client = await fetchLocation();
+
     const payload = {
-      user: { email: "test@example.com" }, // demo user
+      user: { email: "test@example.com" },
       resource,
       device: {
         os_type: navigator.userAgent.includes("Mac") ? "macOS" : "Windows",
-        os_version: "11",
+        os_version: navigator.appVersion,
         rooted: false,
         encrypted: true,
       },
-      location: {}, // let backend auto-detect from IP
-      context: { mfa_verified: true }, // simulate MFA already done
+      location: client.location,
+      client_ip: client.ip,     // 🔥 IMPORTANT
+      context: { mfa_verified: true },
     };
 
     const res = await fetch(`${API_BASE}/api/policy/evaluate`, {
@@ -111,6 +115,7 @@ async function evaluateResource(resource) {
     };
   }
 }
+
 
 /** 2️⃣ Risk data using database-prod policy */
 async function fetchRiskData() {
@@ -142,18 +147,35 @@ async function fetchAnomalies() {
 }
 
 /** 4️⃣ Location + IP using /api/policy/location-detect */
+/** 4️⃣ Location + IP using client IP → backend detection */
 async function fetchLocation() {
   try {
-    const res = await fetch(`${API_BASE}/api/policy/location-detect`);
-    return await res.json(); // { ip, location: { country, city, isp, ... } }
+    // Get real public IP
+    const ipRes = await fetch("https://api64.ipify.org?format=json");
+    const ipData = await ipRes.json();
+
+    // Ask backend to detect location from client IP
+    const res = await fetch(`${API_BASE}/api/policy/location-detect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ip: ipData.ip }),
+    });
+
+    const locData = await res.json();
+
+    return {
+      ip: ipData.ip,
+      location: locData.location || { city: "Unknown", country: "Unknown", isp: "Unknown" }
+    };
   } catch (err) {
     console.error("fetchLocation error:", err);
     return {
-      ip: "--",
+      ip: "127.0.0.1",
       location: { city: "Unknown", country: "Unknown", isp: "Unknown" },
     };
   }
 }
+
 
 /** 5️⃣ Session status (/api/policy/session-status) - JWT required */
 async function fetchSessionStatus(token) {

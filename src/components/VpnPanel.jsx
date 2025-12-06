@@ -4,15 +4,14 @@ export default function VpnDashboard() {
   const [token, setToken] = useState(localStorage.getItem("vpn_token") || "");
   const [connectionId, setConnectionId] = useState("");
   const [clientIp, setClientIp] = useState("127.0.0.1");
+
   const [device, setDevice] = useState({
     os_type: "Unknown",
     os_version: "Unknown",
     encrypted: true,
   });
-  const [status, setStatus] = useState(null);
+
   const [connections, setConnections] = useState([]);
-  const [routes, setRoutes] = useState(null);
-  const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [activityLog, setActivityLog] = useState([]);
@@ -24,7 +23,9 @@ export default function VpnDashboard() {
     ]);
   };
 
-  // Fetch client IP once
+  // ----------------------------------------------------
+  // Fetch public IP
+  // ----------------------------------------------------
   useEffect(() => {
     fetch("https://api64.ipify.org?format=json")
       .then((res) => res.json())
@@ -32,37 +33,35 @@ export default function VpnDashboard() {
         setClientIp(d.ip);
         addLog(`🌐 Client IP: ${d.ip}`);
       })
-      .catch(() => {
-        setClientIp("127.0.0.1");
-        addLog("⚠️ Failed to fetch IP");
-      });
+      .catch(() => addLog("⚠️ Failed to fetch IP"));
   }, []);
 
-  // AUTO-LOAD existing VPN connection when token changes
-  useEffect(() => {
-    if (!token) return;
+  // ----------------------------------------------------
+  // Load active VPN connections (ALWAYS USE data.connections)
+  // ----------------------------------------------------
+  const loadActiveConnections = async () => {
+    try {
+      const res = await fetch("http://localhost:5001/api/vpn/connections");
+      const data = await res.json();
 
-    async function checkExisting() {
-      try {
-        const res = await fetch("http://localhost:5001/api/vpn/connections");
-        const data = await res.json();
+      console.log("Active connections API:", data);
 
-        // Match by user token (backend must include token)
-        const myConn = data.find((c) => c.user_token === token);
+      // backend returns: { connections: [...], count: 1 }
+      setConnections(Array.isArray(data.connections) ? data.connections : []);
 
-        if (myConn) {
-          setConnectionId(myConn.connection_id);
-          addLog(`🟡 Restored previous VPN session: ${myConn.connection_id}`);
-        }
-      } catch (err) {
-        console.log("Error auto-checking connection:", err);
-      }
+    } catch (err) {
+      addLog("❌ Failed to load active connections");
     }
+  };
 
-    checkExisting();
-  }, [token]);
+  // Load as soon as the dashboard opens
+  useEffect(() => {
+    loadActiveConnections();
+  }, []);
 
-  // ---------------------- API HANDLERS ----------------------
+  // ----------------------------------------------------
+  // CONNECT
+  // ----------------------------------------------------
   const handleConnect = async () => {
     if (!token) return setMessage("Please set token first");
 
@@ -78,25 +77,18 @@ export default function VpnDashboard() {
 
       const data = await res.json();
       setMessage(JSON.stringify(data, null, 2));
-      console.log("connect response:", data);
 
-      // 🟡 CASE 1: User already has a connection
       if (data.existing_connection) {
-        const existingId = data.existing_connection.connection_id;
-        setConnectionId(existingId);
-
-        addLog(`🟡 Existing session detected → Using ID: ${existingId}`);
-        setLoading(false);
-        return;
-      }
-
-      // 🟢 CASE 2: Fresh new connection
-      if (data.connection_id) {
+        setConnectionId(data.existing_connection.connection_id);
+        addLog(`🟡 Using existing connection: ${data.existing_connection.connection_id}`);
+      } else if (data.connection_id) {
         setConnectionId(data.connection_id);
-        addLog(`🟢 Connected | ID: ${data.connection_id}`);
-      } else {
-        addLog("⚠️ No connection ID returned");
+        addLog(`🟢 Connected: ${data.connection_id}`);
       }
+
+      // refresh active list
+      await loadActiveConnections();
+
     } catch (err) {
       addLog("❌ Connect error: " + err.message);
     }
@@ -104,6 +96,9 @@ export default function VpnDashboard() {
     setLoading(false);
   };
 
+  // ----------------------------------------------------
+  // DISCONNECT
+  // ----------------------------------------------------
   const handleDisconnect = async () => {
     if (!connectionId) return addLog("⚠️ No active connection to disconnect");
 
@@ -118,10 +113,14 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
+      addLog("🛑 Disconnected");
       setMessage(JSON.stringify(data, null, 2));
 
       setConnectionId("");
-      addLog("🛑 Disconnected");
+
+      // refresh list
+      await loadActiveConnections();
+
     } catch (err) {
       addLog("❌ Disconnect error: " + err.message);
     }
@@ -129,6 +128,9 @@ export default function VpnDashboard() {
     setLoading(false);
   };
 
+  // ----------------------------------------------------
+  // STATUS
+  // ----------------------------------------------------
   const handleStatus = async () => {
     if (!connectionId) return;
 
@@ -143,9 +145,9 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
-      setStatus(data);
       setMessage(JSON.stringify(data, null, 2));
       addLog("📊 Status received");
+
     } catch (err) {
       addLog("❌ Status error: " + err.message);
     }
@@ -153,26 +155,12 @@ export default function VpnDashboard() {
     setLoading(false);
   };
 
-  const handleConnections = async () => {
-    setLoading(true);
-    addLog("📡 Fetching connections...");
-
-    try {
-      const res = await fetch("http://localhost:5001/api/vpn/connections");
-      const data = await res.json();
-
-      setConnections(data);
-      setMessage(JSON.stringify(data, null, 2));
-      addLog("📌 Active connections loaded");
-    } catch (err) {
-      addLog("❌ Fetch error: " + err.message);
-    }
-
-    setLoading(false);
-  };
-
+  // ----------------------------------------------------
+  // ROUTES
+  // ----------------------------------------------------
   const handleRoutes = async () => {
     if (!connectionId) return;
+
     setLoading(true);
     addLog("📍 Fetching routes...");
 
@@ -184,9 +172,9 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
-      setRoutes(data);
       setMessage(JSON.stringify(data, null, 2));
-      addLog("🗺 Routes fetched");
+      addLog("🗺 Routes loaded");
+
     } catch (err) {
       addLog("❌ Route error: " + err.message);
     }
@@ -194,6 +182,9 @@ export default function VpnDashboard() {
     setLoading(false);
   };
 
+  // ----------------------------------------------------
+  // HEALTH
+  // ----------------------------------------------------
   const handleHealth = async () => {
     setLoading(true);
     addLog("❤️ Checking health...");
@@ -202,9 +193,9 @@ export default function VpnDashboard() {
       const res = await fetch("http://localhost:5001/health");
       const data = await res.json();
 
-      setHealth(data);
       setMessage(JSON.stringify(data, null, 2));
-      addLog("💚 Health ok");
+      addLog("💚 Health OK");
+
     } catch (err) {
       addLog("❌ Health error: " + err.message);
     }
@@ -212,10 +203,9 @@ export default function VpnDashboard() {
     setLoading(false);
   };
 
-  // --------------------------------------------------------------------
-  // ----------------------------- UI ----------------------------------
-  // --------------------------------------------------------------------
-
+  // ----------------------------------------------------
+  // UI
+  // ----------------------------------------------------
   return (
     <div className="min-h-screen p-6 bg-gray-100 font-sans">
 
@@ -225,10 +215,10 @@ export default function VpnDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
 
-        {/* LEFT SECTION */}
+        {/* LEFT PANEL */}
         <div className="space-y-8">
 
-          {/* TOKEN */}
+          {/* TOKEN INPUT */}
           <div className="bg-white rounded-2xl p-6 shadow border">
             <label className="text-sm font-semibold text-gray-700">VPN Token</label>
             <input
@@ -237,72 +227,77 @@ export default function VpnDashboard() {
                 setToken(e.target.value);
                 localStorage.setItem("vpn_token", e.target.value);
               }}
-              className="mt-2 w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-blue-400"
+              className="mt-2 w-full px-4 py-2 rounded-xl border"
               placeholder="Enter JWT token..."
             />
           </div>
 
-          {/* BUTTONS */}
+          {/* ACTION BUTTONS */}
           <div className="grid grid-cols-3 gap-3 bg-white p-6 rounded-2xl shadow border">
             <button onClick={handleConnect} disabled={loading} className="btn-primary">
               {loading ? "Connecting..." : "Connect"}
             </button>
 
-            <button onClick={handleDisconnect} className="btn-danger">
-              Disconnect
-            </button>
+            <button onClick={handleDisconnect} className="btn-danger">Disconnect</button>
 
             <button onClick={handleStatus} className="btn-secondary">Status</button>
-            <button onClick={handleConnections} className="btn-neutral">List</button>
+            <button onClick={loadActiveConnections} className="btn-neutral">List</button>
             <button onClick={handleRoutes} className="btn-secondary">Routes</button>
             <button onClick={handleHealth} className="btn-info">Health</button>
           </div>
 
-          {/* OUTPUT */}
+          {/* OUTPUT BOX */}
           <div className="bg-white rounded-2xl p-5 border shadow h-72 overflow-auto">
             <h2 className="font-semibold text-sm mb-2">Output</h2>
-            <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+            <pre className="text-xs whitespace-pre-wrap text-gray-800">
               {message || "📤 Press a button to begin."}
             </pre>
           </div>
         </div>
 
-        {/* RIGHT SECTION */}
+        {/* RIGHT PANEL */}
         <div className="space-y-8">
 
           {/* ACTIVITY LOG */}
           <div className="bg-white rounded-2xl p-5 border shadow h-80 overflow-auto">
-            <h2 className="font-semibold text-sm mb-2">Activity Log</h2>
-            {activityLog.length
-              ? activityLog.map((log, i) => (
-                  <div key={i} className="p-3 mb-2 rounded-xl bg-gray-50 border">
-                    <p className="text-xs font-medium">{log.event}</p>
-                    <p className="text-[11px] text-gray-500">{log.time}</p>
-                  </div>
-                ))
-              : <p className="text-xs text-gray-500 italic">No activity yet.</p>}
+            <h2 className="text-sm font-semibold mb-2">Activity Log</h2>
+            {activityLog.length ? (
+              activityLog.map((log, i) => (
+                <div key={i} className="p-3 mb-2 rounded-xl bg-gray-50 border">
+                  <p className="text-xs font-medium">{log.event}</p>
+                  <p className="text-[11px] text-gray-500">{log.time}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 italic">No activity yet.</p>
+            )}
           </div>
 
-          {/* ACTIVE CONNECTIONS */}
+          {/* ACTIVE CONNECTIONS PANEL */}
           <div className="bg-white rounded-2xl p-5 border shadow h-80 overflow-auto">
-            <h2 className="font-semibold text-sm mb-4">Active Connections</h2>
-            {connections.length
-              ? connections.map((c, i) => (
-                  <div key={i} className="p-3 mb-3 rounded-xl bg-gray-50 border">
-                    <p><strong>User:</strong> {c.user}</p>
-                    <p><strong>VPN IP:</strong> {c.vpn_ip}</p>
-                    <p><strong>ID:</strong> {c.connection_id}</p>
+            <h2 className="text-sm font-semibold mb-3">Active Connections</h2>
 
-                    <span className={`mt-2 inline-block px-2 py-1 rounded-full text-[10px] ${
-                      c.status === "active"
+            {connections.length ? (
+              connections.map((c, i) => (
+                <div key={i} className="p-3 mb-3 rounded-xl bg-gray-50 border">
+                  <p><strong>User:</strong> {c.user}</p>
+                  <p><strong>VPN IP:</strong> {c.vpn_ip}</p>
+                  <p><strong>ID:</strong> {c.connection_id}</p>
+
+                  <span
+                    className={`mt-2 inline-block px-2 py-1 rounded-full text-[10px] ${
+                      c.status === "connected"
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
-                    }`}>
-                      {c.status.toUpperCase()}
-                    </span>
-                  </div>
-                ))
-              : <p className="text-xs text-gray-500 italic">No active connections.</p>}
+                    }`}
+                  >
+                    {c.status.toUpperCase()}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 italic">No active connections.</p>
+            )}
           </div>
 
         </div>

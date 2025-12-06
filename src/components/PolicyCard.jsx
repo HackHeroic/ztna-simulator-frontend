@@ -2,22 +2,54 @@ import React, { useEffect, useState } from "react";
 import { ShieldCheck, ShieldX, Shield } from "lucide-react";
 
 /* ============================================================
-   🔥 API: Evaluate Policy
+   🔥 1. FETCH REAL LOCATION
+   ============================================================ */
+async function getClientLocation() {
+  try {
+    // First get public IP
+    const ipRes = await fetch("https://api64.ipify.org?format=json");
+    const ipData = await ipRes.json();
+
+    // Now ask backend to get location from this IP
+    const locRes = await fetch("http://localhost:5002/api/policy/location-detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ip: ipData.ip }),
+    });
+
+    const locData = await locRes.json();
+
+    return {
+      ip: locData.ip,
+      location: locData.location,
+    };
+  } catch (err) {
+    console.error("Location fetch error:", err);
+    return {
+      ip: "127.0.0.1",
+      location: { country: "Unknown", city: "Unknown" },
+    };
+  }
+}
+
+/* ============================================================
+   🔥 2. POLICY EVALUATION
    ============================================================ */
 async function evaluatePolicy(resource) {
   try {
+    const client = await getClientLocation(); // ⬅ real IP + real location
+
     const payload = {
       user: { email: "test@example.com" },
       resource,
       device: {
-        os_type: navigator.userAgent.toLowerCase().includes("mac")
-          ? "macOS"
-          : "Windows",
-        os_version: "11",
+        os_type: navigator.userAgent.includes("Mac") ? "macOS" : "Windows",
+        os_version: navigator.appVersion,
         rooted: false,
         encrypted: true,
       },
-      location: {},
+      location: client.location,
+      client_ip: client.ip, // ⬅ backend uses this to verify!
       context: { mfa_verified: true },
     };
 
@@ -36,16 +68,12 @@ async function evaluatePolicy(resource) {
     };
   } catch (err) {
     console.error("Policy evaluation failed:", err);
-    return {
-      decision: "DENY",
-      risk_score: 0,
-      threshold: 0,
-    };
+    return { decision: "DENY", risk_score: 0, threshold: 0 };
   }
 }
 
 /* ============================================================
-   🔥 UI Component
+   🔥 3. UI Component
    ============================================================ */
 export default function PolicyCard({ title }) {
   const [policies, setPolicies] = useState([]);
@@ -126,15 +154,11 @@ export default function PolicyCard({ title }) {
                   <td className="py-3 font-medium text-gray-800">{p.resource}</td>
                   <td className="py-3 text-gray-600">{p.desc}</td>
 
-                  {/* Risk Score */}
                   <td className="py-3 text-gray-700">
                     <span className="font-semibold">{p.risk_score}</span>
-                    {p.threshold ? (
-                      <span className="text-gray-400"> / {p.threshold}</span>
-                    ) : null}
+                    <span className="text-gray-400"> / {p.threshold}</span>
                   </td>
 
-                  {/* Decision Badge */}
                   <td className="py-3">
                     {p.decision === "ALLOW" ? (
                       <span className="inline-flex items-center px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
