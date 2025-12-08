@@ -1,0 +1,106 @@
+import Card from "../ui/Card";
+import Badge from "../ui/Badge";
+import { Info, Shield, ShieldCheck, ShieldX } from "lucide-react";
+import { getRiskMeta } from "../../utils/riskUtils";
+
+export default function ResourceTable({ resourceResults }) {
+  const resources = Object.keys(resourceResults || {});
+
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Shield className="text-orange-500" /> Resource Access Decisions
+      </h2>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm table-auto">
+          <thead className="uppercase text-gray-500 text-xs bg-gray-50">
+            <tr>
+              <th className="text-left py-2 px-3 w-44">Resource</th>
+              <th className="text-left py-2 px-3 w-36">Decision</th>
+              <th className="text-left py-2 px-3 w-20">Risk</th>
+              <th className="text-left py-2 px-3 w-64">Details</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {resources.map((r) => {
+              const res = resourceResults[r] || {};
+              const risk = getRiskMeta(res.risk_score || 0);
+
+              return (
+                <tr key={r} className="border-t align-top">
+                  {/* RESOURCE NAME */}
+                  <td className="py-3 px-3 font-medium text-gray-800 whitespace-nowrap">
+                    {r}
+                  </td>
+
+                  {/* DECISION (NO BREAKING NOW!!) */}
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+
+                      {res.decision === "ALLOW" && (
+                        <Badge color="green">
+                          <ShieldCheck size={12} /> ALLOW
+                        </Badge>
+                      )}
+
+                      {res.decision === "DENY" && (
+                        <Badge color="red">
+                          <ShieldX size={12} /> DENY
+                        </Badge>
+                      )}
+
+                      {res.decision === "MFA_REQUIRED" && (
+                        <Badge color="yellow">
+                          MFA REQUIRED
+                        </Badge>
+                      )}
+
+                      {!res.decision && (
+                        <Badge color="gray">PENDING</Badge>
+                      )}
+
+                    </div>
+                  </td>
+
+                  {/* RISK SCORE */}
+                  <td className={"py-3 px-3 font-semibold " + risk.color}>
+                    {res.risk_score ?? "--"}
+                  </td>
+
+                  {/* DETAILS BOX */}
+                  <td className="py-3 px-3 text-blue-600">
+                    <details className="group">
+                      <summary className="cursor-pointer flex items-center gap-1 list-none hover:text-blue-800 transition">
+                        <Info size={12} /> View
+                      </summary>
+
+                      <div className="ml-4 mt-2 p-2 bg-gray-50 border rounded-lg max-h-40 overflow-auto text-xs space-y-2 shadow-sm">
+                        <p>
+                          <span className="font-semibold text-gray-700">Reason:</span>{" "}
+                          {res.reason || "None"}
+                        </p>
+
+                        <div>
+                          <p className="font-semibold text-gray-700 mb-1">Risk Factors:</p>
+                          <ul className="list-disc ml-5 space-y-0.5">
+                            {res.risk_factors?.length ? (
+                              res.risk_factors.map((f, i) => <li key={i}>{f}</li>)
+                            ) : (
+                              <li className="text-gray-500">None</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}

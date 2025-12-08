@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import LoginForm from "./components/LoginForm";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/dashboard/Dashboard";  // ✅ FIXED IMPORT
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
@@ -14,7 +14,7 @@ export default function App() {
     }
   }, [token]);
 
-  // Optional: verify token on mount
+  // Verify token on mount
   useEffect(() => {
     const verifyToken = async () => {
       if (!token) return;
@@ -22,6 +22,7 @@ export default function App() {
         const res = await fetch("http://127.0.0.1:5000/api/auth/verify", {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         if (!res.ok) {
           console.warn("Token invalid or expired");
           setToken(null);
@@ -31,8 +32,9 @@ export default function App() {
         setToken(null);
       }
     };
+
     verifyToken();
-  }, []); // runs once
+  }, []); // runs only once on mount
 
   return (
     <div className="min-h-screen w-full bg-transparent text-gray-900 relative overflow-hidden font-sans">
@@ -46,10 +48,12 @@ export default function App() {
               Secure. Simple.{" "}
               <span className="text-violet-600">Zero Trust</span>
             </h2>
+
             <p className="text-center text-gray-500 mb-8 leading-relaxed">
               Seamless access to your protected resources — built for clarity,
               security, and speed.
             </p>
+
             <LoginForm onLogin={setToken} />
           </div>
         ) : (
