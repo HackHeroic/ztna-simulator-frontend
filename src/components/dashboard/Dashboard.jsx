@@ -1,4 +1,3 @@
-import AttackSummary from "./AttackSummary";
 import AttackSimulator from "./AttackSimulator";
 
 import useDashboardData from "../../hooks/useDashboardData";
@@ -26,14 +25,6 @@ export default function Dashboard({ token, onLogout }) {
             <main className="max-w-7xl mx-auto px-6 py-10 flex flex-col gap-10">
 
                 <AttackSimulator refresh={data.refreshAll} />
-
-                {/* 🔥 Attack summary card */}
-                <AttackSummary
-                    anomalyCount={data.anomalyCount}
-                    recentAnomalyCount={data.recentAnomalyCount}
-                    anomalyDetails={data.anomalyDetails}
-                />
-
 
                 <VpnCard connected={data.connected} setConnected={() => { }} />
 
