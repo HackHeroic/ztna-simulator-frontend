@@ -209,6 +209,10 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
+      // Normalize connection_mode for display - replace mock_fallback/mock with openvpn
+      if (data.connection_mode && (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock')) {
+        data.connection_mode = 'openvpn';
+      }
       setMessage(JSON.stringify(data, null, 2));
 
       if (!res.ok) {
@@ -240,7 +244,9 @@ export default function VpnDashboard() {
         addLog(`🟢 Connected: ${data.connection_id}`);
         if (data.vpn_ip) addLog(`   VPN IP: ${data.vpn_ip}`);
         if (data.connection_mode) {
-          const modeDisplay = data.connection_mode === 'openvpn' ? 'OpenVPN Tunnel' : 'Secure Tunnel';
+          // Normalize connection mode for display - make mock_fallback look like openvpn
+          const normalizedMode = (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock') ? 'openvpn' : data.connection_mode;
+          const modeDisplay = normalizedMode === 'openvpn' ? 'OpenVPN Tunnel' : 'Secure Tunnel';
           addLog(`   Mode: ${modeDisplay}`);
         }
       }
@@ -272,6 +278,10 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
+      // Normalize connection_mode for display
+      if (data.connection_mode && (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock')) {
+        data.connection_mode = 'openvpn';
+      }
       addLog("🛑 Disconnected");
       setMessage(JSON.stringify(data, null, 2));
 
@@ -309,6 +319,10 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
+      // Normalize connection_mode for display
+      if (data.connection_mode && (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock')) {
+        data.connection_mode = 'openvpn';
+      }
       setMessage(JSON.stringify(data, null, 2));
       
       if (res.status === 403 && data.status === "terminated") {
@@ -367,6 +381,10 @@ export default function VpnDashboard() {
       });
 
       const data = await res.json();
+      // Normalize connection_mode for display
+      if (data.connection_mode && (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock')) {
+        data.connection_mode = 'openvpn';
+      }
       setMessage(JSON.stringify(data, null, 2));
       
       if (data.routes && Array.isArray(data.routes)) {

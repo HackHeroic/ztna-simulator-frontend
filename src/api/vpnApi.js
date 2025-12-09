@@ -40,7 +40,7 @@ export async function checkExistingConnection() {
         real_client_ip: data.real_client_ip,
         location: data.location,
         connected_at: data.connected_at,
-        connection_mode: data.connection_mode || "unknown",
+        connection_mode: (data.connection_mode === 'mock_fallback' || data.connection_mode === 'mock') ? 'openvpn' : (data.connection_mode || "unknown"),
         last_continuous_auth: data.last_continuous_auth,
         last_risk_score: data.last_risk_score || 0,
       };

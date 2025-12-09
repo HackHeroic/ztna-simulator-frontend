@@ -17,6 +17,7 @@ import AdminResourceEditor from "./AdminResourceEditor";
 import AdminRiskFactorsEditor from "./AdminRiskFactorsEditor";
 import ThreatUsersPanel from "./ThreatUsersPanel";
 import AdminUserLogs from "./AdminUserLogs";
+import AnomalyLogsPanel from "./AnomalyLogsPanel";
 import { getUserFromToken, isAdmin, hasClearance } from "../../utils/userUtils";
 
 export default function Dashboard({ token, onLogout }) {
@@ -72,7 +73,10 @@ export default function Dashboard({ token, onLogout }) {
                 )}
 
                 {canViewAllLogs && (
-                    <AdminUserLogs accessMetrics={data.accessMetrics} />
+                    <>
+                        <AnomalyLogsPanel />
+                        <AdminUserLogs accessMetrics={data.accessMetrics} />
+                    </>
                 )}
 
                 {isUserAdmin && (
