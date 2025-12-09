@@ -26,19 +26,16 @@ export default function SecurityOverview({
   sessionStatus,
 }) {
   /* ----------------------------------------------------
-     FORCE LOADING IF ANY BACKEND FIELD IS MISSING
+     🔥 FIXED LOADING CONDITION (PREVENT INFINITE LOOPS)
   ---------------------------------------------------- */
   const dataNotReady =
     loading ||
     riskScore === null ||
     riskScore === undefined ||
-    !ip ||
-    !location.city ||
-    !location.country ||
-    anomalyCount === null ||
-    anomalyCount === undefined ||
-    !sessionStatus ||
-    riskFactors.length === 0;
+    ip === null ||
+    ip === undefined ||
+    sessionStatus === null ||
+    sessionStatus === undefined;
 
   if (dataNotReady) {
     return (
@@ -104,6 +101,14 @@ export default function SecurityOverview({
   }
 
   /* ----------------------------------------------------
+     🔥 SAFE FALLBACKS FOR LOCATION FIELDS
+  ---------------------------------------------------- */
+  const city = location.city || "Unknown";
+  const country = location.country || "Unknown";
+  const isp = location.isp || "Unknown";
+  const sessionState = sessionStatus.status?.toUpperCase() || "UNKNOWN";
+
+  /* ----------------------------------------------------
      ALL DATA READY — NORMAL VIEW
   ---------------------------------------------------- */
   const meta = getRiskMeta(riskScore);
@@ -127,10 +132,10 @@ export default function SecurityOverview({
         <Stat
           icon={MapPin}
           label="Location"
-          value={`${location.city}, ${location.country}`}
+          value={`${city}, ${country}`}
         />
 
-        <Stat icon={Activity} label="Anomalies" value={anomalyCount} />
+        <Stat icon={Activity} label="Anomalies" value={anomalyCount ?? 0} />
       </div>
 
       {/* IP + ISP + Session */}
@@ -146,20 +151,19 @@ export default function SecurityOverview({
           <div>
             <p className="font-medium">ISP</p>
             <p className="flex items-center gap-1">
-              <Wifi size={14} /> {location.isp}
+              <Wifi size={14} /> {isp}
             </p>
           </div>
         </div>
 
         <div className="p-4 w-48 border rounded-xl bg-orange-50 border-orange-200">
           <p className="font-semibold flex items-center gap-1 text-orange-600">
-            <Radio className="text-orange-600" />{" "}
-            Session: {sessionStatus.status?.toUpperCase()}
+            <Radio className="text-orange-600" /> Session: {sessionState}
           </p>
           <p className="text-sm mt-1">
-            Last verified: {sessionStatus.last_verified}
+            Last verified: {sessionStatus.last_verified || "N/A"}
           </p>
-          <p className="text-sm">Risk: {sessionStatus.risk_score}</p>
+          <p className="text-sm">Risk: {sessionStatus.risk_score ?? 0}</p>
         </div>
       </div>
 
@@ -168,7 +172,7 @@ export default function SecurityOverview({
         <p className="font-medium mb-2">Risk Factors</p>
 
         <ul className="list-disc ml-4 space-y-1">
-          {riskFactors.map((f, i) => (
+          {(riskFactors.length > 0 ? riskFactors : ["No risk factors"] ).map((f, i) => (
             <li key={i}>{f}</li>
           ))}
         </ul>

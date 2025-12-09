@@ -12,14 +12,27 @@ import {
 } from "lucide-react";
 import { simulateRisk } from "../../api/policyApi";
 
-const playSound = (file) => {
-  const audio = new Audio(file);
-  audio.volume = 1.0; // full power 😈
-  audio.play().catch(() => {});
-};
+
 
 
 export default function AttackSimulator({ refresh }) {
+  const audioRef = useRef(null);
+
+const playSound = (file) => {
+  // Stop previous sound if exists
+  if (audioRef.current) {
+    audioRef.current.pause();
+    audioRef.current.currentTime = 0;
+  }
+
+  // Create and play new sound
+  const audio = new Audio(file);
+  audio.volume = 1.0;
+  audio.play().catch(() => {});
+  
+  audioRef.current = audio;
+};
+
   const token = localStorage.getItem("token");
   const email = token ? JSON.parse(atob(token.split(".")[1])).email : "unknown@user";
   const resultRef = useRef(null);

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   evaluateResource,
-  fetchLocation,
+  fetchLocation,       // returns { ip, location, device }
   fetchRiskData,
   fetchAnomalies,
   fetchPolicies,
@@ -12,32 +12,43 @@ import {
 export default function useDashboardData(token) {
   const [state, setState] = useState({
     connected: false,
+
+    // Risk
     riskScore: 0,
     riskFactors: [],
+
+    // Client metadata
     ip: "--",
     location: {},
+    device: {},              // ⭐ NEW — device info stored here
+
+    // Anomalies
     anomalyCount: 0,
     recentAnomalyCount: 0,
     anomalyDetails: [],
     anomalyRiskLevel: "low",
+
+    // System
     sessionStatus: null,
     policies: null,
     health: null,
     resourceResults: {},
+
     lastRefreshed: null,
     loading: false,
 
-    /* 🔥 NEW — Store latest test-risk result */
+    // Test-risk simulator
     lastTestRisk: null,
     lastTestRiskFactors: [],
     lastTestLocation: {},
+    lastTestDevice: {},      // ⭐ NEW — includes device during attack tests
     lastTestTime: null,
   });
 
   const resources = ["database-prod", "admin-panel", "file-server", "vpn-gateway"];
 
   /* -------------------------------------------------------------
-     🔥 Allow AttackSimulator to push the latest test-risk
+     🔥 AttackSimulator pushes test-risk results into dashboard
   -------------------------------------------------------------- */
   const updateTestRisk = (riskObj) => {
     setState((prev) => ({
@@ -45,21 +56,23 @@ export default function useDashboardData(token) {
       lastTestRisk: riskObj.risk_score ?? riskObj.test_risk_score ?? 0,
       lastTestRiskFactors: riskObj.risk_factors || [],
       lastTestLocation: riskObj.context?.location || {},
+      lastTestDevice: riskObj.context?.device || {},  // ⭐ pulled from context
       lastTestTime: new Date().toISOString(),
     }));
   };
 
   /* -------------------------------------------------------------
-     🔄 Dashboard Refresh (every 20 sec)
+     🔄 Dashboard Auto Refresh (every 20 sec)
   -------------------------------------------------------------- */
   const refreshAll = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }));
 
     try {
-      // 1) get IP + location first
+      // 1. Get client info first (ip + location + device)
       const client = await fetchLocation();
+      console.log("client", client);
 
-      // 2) fetch everything fast in parallel
+      // 2. Grab everything in parallel
       const [
         risk,
         anomalies,
@@ -76,27 +89,32 @@ export default function useDashboardData(token) {
         ...resources.map((r) => evaluateResource(r, client)),
       ]);
 
-      // Build resource result map
+      // Map resource responses
       const resourceResults = {};
       resources.forEach((r, index) => {
         resourceResults[r] = resourceResponses[index];
       });
 
-      // Update main state
+      // Update main dashboard state
       setState((prev) => ({
         ...prev,
 
+        // Risk
         riskScore: risk.risk_score,
         riskFactors: risk.risk_factors,
 
+        // Client
         ip: client.ip,
         location: client.location,
+        device: client.device,    // ⭐ NEW
 
+        // Anomaly data
         anomalyCount: anomalies.anomalies,
         recentAnomalyCount: anomalies.recent_anomalies,
         anomalyDetails: anomalies.details || [],
         anomalyRiskLevel: anomalies.risk_level,
 
+        // System
         sessionStatus: session,
         policies,
         health,
@@ -104,8 +122,6 @@ export default function useDashboardData(token) {
 
         lastRefreshed: new Date().toLocaleTimeString(),
         loading: false,
-
-        // DO NOT TOUCH lastTestRisk (persistent until next test)
       }));
     } catch (err) {
       console.error("Dashboard refresh failed:", err);
@@ -113,16 +129,21 @@ export default function useDashboardData(token) {
     }
   }, [token]);
 
-  /* auto-refresh every 20 seconds */
+  /* -------------------------------------------------------------
+     ⏱️ Auto Refresh Every 20 Seconds
+  -------------------------------------------------------------- */
   useEffect(() => {
     refreshAll();
     const interval = setInterval(refreshAll, 20000);
     return () => clearInterval(interval);
   }, [refreshAll]);
 
-  return { 
+  /* -------------------------------------------------------------
+     Return Hook API
+  -------------------------------------------------------------- */
+  return {
     ...state,
     refreshAll,
-    updateTestRisk,    // 🔥 AttackSimulator can call this
+    updateTestRisk,
   };
 }
