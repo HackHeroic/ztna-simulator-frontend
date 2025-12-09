@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
-import { Settings, Plus, Trash2, Save, X, Shield, Lock, Clock, AlertCircle } from "lucide-react";
+import Modal from "../ui/Modal";
+import { Settings, Plus, Trash2, Save, X, Shield, Lock, Clock, AlertCircle, Edit } from "lucide-react";
 import { getUserFromToken, isAdmin } from "../../utils/userUtils";
 
 const API_BASE = "http://localhost:5002";
@@ -12,6 +13,16 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
   const isUserAdmin = isAdmin(user);
 
   const [editingResource, setEditingResource] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newResourceName, setNewResourceName] = useState("");
+  const [newResourcePolicy, setNewResourcePolicy] = useState({
+    sensitivity: "medium",
+    require_mfa: false,
+    require_low_risk: true,
+    session_timeout_minutes: 30,
+    audit_all_access: false,
+    time_restricted: false,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -89,8 +100,10 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
   };
 
   const handleAddResource = async () => {
-    const name = prompt("Enter resource name:");
-    if (!name) return;
+    if (!newResourceName.trim()) {
+      setError("Resource name is required");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -103,15 +116,8 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          name,
-          policy: {
-            sensitivity: "medium",
-            require_mfa: false,
-            require_low_risk: true,
-            session_timeout_minutes: 30,
-            audit_all_access: false,
-            time_restricted: false,
-          },
+          name: newResourceName.trim(),
+          policy: newResourcePolicy,
         }),
       });
 
@@ -122,6 +128,16 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
       }
 
       setSuccess("Resource added successfully!");
+      setShowAddModal(false);
+      setNewResourceName("");
+      setNewResourcePolicy({
+        sensitivity: "medium",
+        require_mfa: false,
+        require_low_risk: true,
+        session_timeout_minutes: 30,
+        audit_all_access: false,
+        time_restricted: false,
+      });
       setTimeout(() => {
         setSuccess(null);
         onUpdate?.();
@@ -189,7 +205,7 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
           <Settings className="text-orange-500" /> Resource Policy Editor
         </h2>
         <button
-          onClick={handleAddResource}
+          onClick={() => setShowAddModal(true)}
           disabled={loading}
           className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
         >
@@ -406,6 +422,167 @@ export default function AdminResourceEditor({ resources, onUpdate }) {
           })}
         </div>
       )}
+
+      {/* Add Resource Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setNewResourceName("");
+          setError(null);
+        }}
+        title="Add New Resource"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Resource Name
+            </label>
+            <input
+              type="text"
+              value={newResourceName}
+              onChange={(e) => setNewResourceName(e.target.value)}
+              placeholder="e.g., api-gateway"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sensitivity Level
+            </label>
+            <select
+              value={newResourcePolicy.sensitivity}
+              onChange={(e) =>
+                setNewResourcePolicy({
+                  ...newResourcePolicy,
+                  sensitivity: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Session Timeout (minutes)
+            </label>
+            <input
+              type="number"
+              value={newResourcePolicy.session_timeout_minutes}
+              onChange={(e) =>
+                setNewResourcePolicy({
+                  ...newResourcePolicy,
+                  session_timeout_minutes: parseInt(e.target.value) || 30,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Policy Settings</label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newResourcePolicy.require_mfa}
+                  onChange={(e) =>
+                    setNewResourcePolicy({
+                      ...newResourcePolicy,
+                      require_mfa: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm">Require Multi-Factor Authentication</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newResourcePolicy.require_low_risk}
+                  onChange={(e) =>
+                    setNewResourcePolicy({
+                      ...newResourcePolicy,
+                      require_low_risk: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm">Require Low Risk Score</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newResourcePolicy.audit_all_access}
+                  onChange={(e) =>
+                    setNewResourcePolicy({
+                      ...newResourcePolicy,
+                      audit_all_access: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm">Audit All Access</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newResourcePolicy.time_restricted}
+                  onChange={(e) =>
+                    setNewResourcePolicy({
+                      ...newResourcePolicy,
+                      time_restricted: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm">Time Restricted Access</span>
+              </label>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4 border-t">
+            <button
+              onClick={handleAddResource}
+              disabled={loading || !newResourceName.trim()}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus size={16} /> Add Resource
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddModal(false);
+                setNewResourceName("");
+                setError(null);
+              }}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Card>
   );
 }

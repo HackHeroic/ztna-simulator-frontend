@@ -65,15 +65,10 @@ export default function App() {
 
       {/* Footer */}
       <footer className="relative z-10 text-center py-6 text-gray-500 text-sm border-t border-gray-100 bg-white/20 backdrop-blur-md">
-        © {new Date().getFullYear()} ZTNA Demo — Inspired by{" "}
-        <a
-          href="https://alice.aryankeluskar.com"
-          target="_blank"
-          rel="noreferrer"
-          className="text-violet-600 hover:text-purple-500 font-medium transition"
-        >
-          Alice
-        </a>
+        © {new Date().getFullYear()} ZTNA Demo —{" "}
+        <span className="text-violet-600 font-medium">
+          Malik Thoda sa Galti ho gye
+        </span>
       </footer>
     </div>
   );

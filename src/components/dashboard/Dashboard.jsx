@@ -34,8 +34,6 @@ export default function Dashboard({ token, onLogout }) {
 
             <main className="max-w-7xl mx-auto px-6 py-10 flex flex-col gap-10">
 
-                <AttackSimulator refresh={data.refreshAll} />
-
                 <VpnCard connected={data.connected} setConnected={() => { }} />
 
                 <VpnRoutingTable />
@@ -77,6 +75,8 @@ export default function Dashboard({ token, onLogout }) {
                         />
                     </div>
                 )}
+
+                <AttackSimulator refresh={data.refreshAll} />
 
             </main>
         </div>
