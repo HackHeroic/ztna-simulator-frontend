@@ -7,7 +7,13 @@ import {
   fetchPolicies,
   fetchSessionStatus,
   fetchHealth,
+  fetchRiskThresholds,
+  fetchAccessMetrics,
+  fetchContinuousAuthHistory,
+  fetchResources,
+  continuousAuth,
 } from "../api/policyApi";
+import { getUserFromToken } from "../utils/userUtils";
 
 export default function useDashboardData(token) {
   const [state, setState] = useState({
@@ -33,6 +39,10 @@ export default function useDashboardData(token) {
     policies: null,
     health: null,
     resourceResults: {},
+    riskThresholds: null,
+    accessMetrics: null,
+    continuousAuthHistory: null,
+    resources: null,
 
     lastRefreshed: null,
     loading: false,
@@ -79,6 +89,10 @@ export default function useDashboardData(token) {
         policies,
         health,
         session,
+        riskThresholds,
+        accessMetrics,
+        continuousAuthHistory,
+        resourcesList,
         ...resourceResponses
       ] = await Promise.all([
         fetchRiskData(client),
@@ -86,6 +100,10 @@ export default function useDashboardData(token) {
         fetchPolicies(),
         fetchHealth(),
         fetchSessionStatus(),
+        fetchRiskThresholds(),
+        fetchAccessMetrics(),
+        fetchContinuousAuthHistory(getUserFromToken(token)?.email),
+        fetchResources(),
         ...resources.map((r) => evaluateResource(r, client)),
       ]);
 
@@ -119,6 +137,10 @@ export default function useDashboardData(token) {
         policies,
         health,
         resourceResults,
+        riskThresholds,
+        accessMetrics,
+        continuousAuthHistory,
+        resources: resourcesList,
 
         lastRefreshed: new Date().toLocaleTimeString(),
         loading: false,
@@ -137,6 +159,26 @@ export default function useDashboardData(token) {
     const interval = setInterval(refreshAll, 20000);
     return () => clearInterval(interval);
   }, [refreshAll]);
+
+  /* -------------------------------------------------------------
+     🔐 Periodic Continuous Auth Check (every 2 minutes)
+     This generates continuous auth logs for monitoring
+  -------------------------------------------------------------- */
+  useEffect(() => {
+    const performContinuousAuth = async () => {
+      try {
+        const client = await fetchLocation();
+        await continuousAuth(client.device, client.location, client.ip);
+      } catch (err) {
+        console.error("Continuous auth check failed:", err);
+      }
+    };
+
+    // Perform immediately, then every 2 minutes
+    performContinuousAuth();
+    const continuousAuthInterval = setInterval(performContinuousAuth, 120000);
+    return () => clearInterval(continuousAuthInterval);
+  }, []);
 
   /* -------------------------------------------------------------
      Return Hook API

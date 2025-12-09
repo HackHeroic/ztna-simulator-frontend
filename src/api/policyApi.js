@@ -229,4 +229,142 @@
    
      return res.data || {};
    }
+
+   /* ------------------------------------------------------------
+      9️⃣ RISK THRESHOLDS
+   ------------------------------------------------------------- */
+   export async function fetchRiskThresholds() {
+     try {
+       const res = await fetch(`${API_BASE}/api/policy/risk-thresholds`);
+       return res.json();
+     } catch (err) {
+       console.error("fetchRiskThresholds failed:", err);
+       return null;
+     }
+   }
+
+   export async function setRiskThresholds(thresholds) {
+     const token = localStorage.getItem("token");
+     const res = await post(
+       `${API_BASE}/api/policy/risk-thresholds`,
+       thresholds,
+       token
+     );
+     return res.data || {};
+   }
+
+   export async function resetRiskThresholds() {
+     const token = localStorage.getItem("token");
+     const res = await post(
+       `${API_BASE}/api/policy/risk-thresholds/reset`,
+       {},
+       token
+     );
+     return res.data || {};
+   }
+
+   /* ------------------------------------------------------------
+      🔟 ACCESS METRICS
+   ------------------------------------------------------------- */
+   export async function fetchAccessMetrics(resource = null, userEmail = null) {
+     try {
+       const params = new URLSearchParams();
+       if (resource) params.append("resource", resource);
+       if (userEmail) params.append("user_email", userEmail);
+       
+       const url = `${API_BASE}/api/policy/access-metrics${params.toString() ? `?${params.toString()}` : ""}`;
+       const res = await fetch(url);
+       return res.json();
+     } catch (err) {
+       console.error("fetchAccessMetrics failed:", err);
+       return { error: err.message };
+     }
+   }
+
+   /* ------------------------------------------------------------
+      1️⃣1️⃣ CONTINUOUS AUTH HISTORY
+   ------------------------------------------------------------- */
+   export async function fetchContinuousAuthHistory(userEmail = null, limit = 100) {
+     try {
+       const params = new URLSearchParams();
+       if (userEmail) params.append("user_email", userEmail);
+       params.append("limit", limit.toString());
+       
+       const url = `${API_BASE}/api/policy/continuous-auth-history?${params.toString()}`;
+       const res = await fetch(url);
+       return res.json();
+     } catch (err) {
+       console.error("fetchContinuousAuthHistory failed:", err);
+       return { error: err.message };
+     }
+   }
+
+   /* ------------------------------------------------------------
+      1️⃣2️⃣ CONTINUOUS AUTHENTICATION
+   ------------------------------------------------------------- */
+   export async function continuousAuth(device = {}, location = {}, clientIp = null) {
+     const token = localStorage.getItem("token");
+     if (!token) return { status: "failed", reason: "No token provided" };
+
+     const payload = {
+       device: normalizeDevice(device),
+       location,
+       client_ip: clientIp,
+     };
+
+     const res = await post(
+       `${API_BASE}/api/policy/continuous-auth`,
+       payload,
+       token
+     );
+     return res.data || {};
+   }
+
+   /* ------------------------------------------------------------
+      1️⃣3️⃣ RESOURCES LIST
+   ------------------------------------------------------------- */
+   export async function fetchResources() {
+     try {
+       const res = await fetch(`${API_BASE}/api/policy/resources`);
+       return res.json();
+     } catch (err) {
+       console.error("fetchResources failed:", err);
+       return { error: err.message };
+     }
+   }
+
+   /* ------------------------------------------------------------
+      1️⃣4️⃣ ADMIN APIs
+   ------------------------------------------------------------- */
+   export async function fetchAdminRiskFactors() {
+     const token = localStorage.getItem("token");
+     try {
+       const res = await fetch(`${API_BASE}/api/policy/admin/risk-factors`, {
+         headers: {
+           Authorization: `Bearer ${token}`,
+         },
+       });
+       if (!res.ok) throw new Error("Admin access required");
+       return res.json();
+     } catch (err) {
+       console.error("fetchAdminRiskFactors failed:", err);
+       return { error: err.message };
+     }
+   }
+
+   export async function fetchAdminResourcePolicies() {
+     const token = localStorage.getItem("token");
+     try {
+       const res = await fetch(`${API_BASE}/api/policy/admin/resource-policies`, {
+         headers: {
+           Authorization: `Bearer ${token}`,
+         },
+       });
+       if (!res.ok) throw new Error("Admin access required");
+       return res.json();
+     } catch (err) {
+       console.error("fetchAdminResourcePolicies failed:", err);
+       return { error: err.message };
+     }
+   }
    

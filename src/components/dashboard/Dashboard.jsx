@@ -9,9 +9,18 @@ import SecurityOverview from "./SecurityOverview";
 import ResourceTable from "./ResourceTable";
 import PolicyDeviceContext from "./PolicyDeviceContext";
 import HealthCard from "./HealthCard";
+import RiskThresholdsCard from "./RiskThresholdsCard";
+import AccessMetricsCard from "./AccessMetricsCard";
+import ContinuousAuthHistory from "./ContinuousAuthHistory";
+import ResourcesList from "./ResourcesList";
+import AdminResourceEditor from "./AdminResourceEditor";
+import AdminRiskFactorsEditor from "./AdminRiskFactorsEditor";
+import { getUserFromToken, isAdmin } from "../../utils/userUtils";
 
 export default function Dashboard({ token, onLogout }) {
     const data = useDashboardData(token);
+    const user = getUserFromToken(token);
+    const isUserAdmin = isAdmin(user);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-yellow-50">
@@ -42,6 +51,32 @@ export default function Dashboard({ token, onLogout }) {
                     <PolicyDeviceContext policies={data.policies} />
                     <HealthCard health={data.health} />
                 </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <RiskThresholdsCard 
+                        riskThresholds={data.riskThresholds} 
+                        onUpdate={data.refreshAll}
+                    />
+                    <AccessMetricsCard accessMetrics={data.accessMetrics} />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <ContinuousAuthHistory history={data.continuousAuthHistory} />
+                    <ResourcesList resources={data.resources} />
+                </div>
+
+                {isUserAdmin && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <AdminResourceEditor 
+                            resources={data.resources} 
+                            onUpdate={data.refreshAll}
+                        />
+                        <AdminRiskFactorsEditor 
+                            policies={data.policies} 
+                            onUpdate={data.refreshAll}
+                        />
+                    </div>
+                )}
 
             </main>
         </div>

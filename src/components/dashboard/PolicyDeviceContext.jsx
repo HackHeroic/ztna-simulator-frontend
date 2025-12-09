@@ -1,12 +1,37 @@
 import Card from "../ui/Card";
-import { Cpu, AlertTriangle } from "lucide-react";
+import { Cpu, AlertTriangle, Lock } from "lucide-react";
 import RiskFactorTable from "../ui/RiskFactorTable";
+import { getUserFromToken, canViewDevicePolicyContext } from "../../utils/userUtils";
 
 export default function PolicyDeviceContext({ policies }) {
+  const token = localStorage.getItem("token");
+  const user = getUserFromToken(token);
+  const canView = canViewDevicePolicyContext(user);
+
+  if (!canView) {
+    return (
+      <Card>
+        <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+          <Lock className="text-gray-400 mb-2" size={32} />
+          <h2 className="text-lg font-semibold mb-2">Device & Policy Context</h2>
+          <p className="text-sm text-center">
+            This section is restricted to Security personnel, Administrators, and users with clearance level 3 or higher.
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            Your role: {user?.role || "Unknown"} | Clearance: {user?.clearance || 0}
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <Cpu className="text-purple-500" /> Device & Policy Context
+        <span className="ml-auto text-xs text-gray-500">
+          {user?.role} (Clearance {user?.clearance})
+        </span>
       </h2>
 
       <p className="font-medium mb-2">Device Fingerprint</p>
