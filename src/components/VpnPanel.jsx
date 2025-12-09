@@ -78,12 +78,33 @@ export default function VpnDashboard() {
       const data = await res.json();
       setMessage(JSON.stringify(data, null, 2));
 
-      if (data.existing_connection) {
-        setConnectionId(data.existing_connection.connection_id);
-        addLog(`🟡 Using existing connection: ${data.existing_connection.connection_id}`);
-      } else if (data.connection_id) {
+      if (!res.ok) {
+        // Handle existing connection (409 Conflict)
+        if (res.status === 409 && data.existing_connection) {
+          setConnectionId(data.existing_connection.connection_id);
+          addLog(`🟡 Using existing connection: ${data.existing_connection.connection_id}`);
+          await loadActiveConnections();
+          setLoading(false);
+          return;
+        }
+        // Handle policy denial (403)
+        if (res.status === 403) {
+          addLog(`❌ Access denied: ${data.error || "Policy denied"}`);
+          if (data.reason) addLog(`   Reason: ${data.reason}`);
+          if (data.risk_score !== undefined) addLog(`   Risk Score: ${data.risk_score}`);
+          setLoading(false);
+          return;
+        }
+        // Other errors
+        addLog(`❌ Connection failed: ${data.error || "Unknown error"}`);
+        setLoading(false);
+        return;
+      }
+
+      if (data.connection_id) {
         setConnectionId(data.connection_id);
         addLog(`🟢 Connected: ${data.connection_id}`);
+        if (data.vpn_ip) addLog(`   VPN IP: ${data.vpn_ip}`);
       }
 
       // refresh active list
@@ -146,7 +167,19 @@ export default function VpnDashboard() {
 
       const data = await res.json();
       setMessage(JSON.stringify(data, null, 2));
-      addLog("📊 Status received");
+      
+      if (res.status === 403 && data.status === "terminated") {
+        addLog(`⚠️ Connection terminated: ${data.reason || "Unknown reason"}`);
+        if (data.terminated_at) {
+          addLog(`   Terminated at: ${new Date(data.terminated_at).toLocaleString()}`);
+        }
+      } else if (data.status === "disconnected") {
+        addLog(`⚠️ Connection disconnected: ${data.reason || "Unknown reason"}`);
+      } else {
+        addLog("📊 Status received");
+        if (data.status) addLog(`   Status: ${data.status}`);
+        if (data.vpn_ip) addLog(`   VPN IP: ${data.vpn_ip}`);
+      }
 
     } catch (err) {
       addLog("❌ Status error: " + err.message);
@@ -278,23 +311,49 @@ export default function VpnDashboard() {
             <h2 className="text-sm font-semibold mb-3">Active Connections</h2>
 
             {connections.length ? (
-              connections.map((c, i) => (
-                <div key={i} className="p-3 mb-3 rounded-xl bg-gray-50 border">
-                  <p><strong>User:</strong> {c.user}</p>
-                  <p><strong>VPN IP:</strong> {c.vpn_ip}</p>
-                  <p><strong>ID:</strong> {c.connection_id}</p>
+              connections.map((c, i) => {
+                const status = c.status || "unknown";
+                const isActive = status === "active" || status === "connected";
+                const isTerminated = status === "terminated";
+                const isDisconnected = status === "disconnected";
+                
+                return (
+                  <div key={i} className="p-3 mb-3 rounded-xl bg-gray-50 border">
+                    <p><strong>User:</strong> {c.user}</p>
+                    <p><strong>VPN IP:</strong> {c.vpn_ip || "N/A"}</p>
+                    <p><strong>ID:</strong> {c.connection_id}</p>
+                    {c.connected_at && (
+                      <p className="text-xs text-gray-500">
+                        Connected: {new Date(c.connected_at).toLocaleString()}
+                      </p>
+                    )}
+                    {isTerminated && c.terminated_at && (
+                      <p className="text-xs text-red-500">
+                        Terminated: {new Date(c.terminated_at).toLocaleString()}
+                      </p>
+                    )}
+                    {isDisconnected && c.disconnected_at && (
+                      <p className="text-xs text-orange-500">
+                        Disconnected: {new Date(c.disconnected_at).toLocaleString()}
+                      </p>
+                    )}
 
-                  <span
-                    className={`mt-2 inline-block px-2 py-1 rounded-full text-[10px] ${
-                      c.status === "connected"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {c.status.toUpperCase()}
-                  </span>
-                </div>
-              ))
+                    <span
+                      className={`mt-2 inline-block px-2 py-1 rounded-full text-[10px] ${
+                        isActive
+                          ? "bg-green-100 text-green-700"
+                          : isTerminated
+                          ? "bg-red-100 text-red-700"
+                          : isDisconnected
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {status.toUpperCase()}
+                    </span>
+                  </div>
+                );
+              })
             ) : (
               <p className="text-xs text-gray-500 italic">No active connections.</p>
             )}

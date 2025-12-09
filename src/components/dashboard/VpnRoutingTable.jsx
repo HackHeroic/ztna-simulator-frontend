@@ -192,8 +192,17 @@ export default function VpnRoutingTable() {
                     className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-gray-700">
+                      <span className={`font-semibold ${
+                        client.common_name === "UNDEF" || !client.common_name
+                          ? "text-orange-600"
+                          : "text-gray-700"
+                      }`}>
                         {client.common_name || "UNDEF"}
+                        {client.common_name === "UNDEF" && (
+                          <span className="ml-1 text-[9px] text-orange-500" title="Certificate CN not recognized">
+                            ⚠
+                          </span>
+                        )}
                       </span>
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">
                         Active
