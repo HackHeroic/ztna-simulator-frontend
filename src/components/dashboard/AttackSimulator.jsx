@@ -529,6 +529,83 @@ setPayloadDetails(finalPayload);
             </p>
           )}
         </div>
+
+        {/* Detailed Analysis */}
+        {payloadDetails && (
+          <div className="mt-6 pt-4 border-t border-slate-800">
+            <p className="text-xs font-bold text-slate-100 mb-3">Attack Payload Analysis</p>
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              {payloadDetails.location && (
+                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                  <span className="text-slate-400">Location:</span>
+                  <div className="text-slate-200 font-medium mt-1">
+                    {payloadDetails.location.country || payloadDetails.location.city || 'Unknown'}
+                    {payloadDetails.location.country && payloadDetails.location.city && 
+                      `, ${payloadDetails.location.city}`}
+                  </div>
+                </div>
+              )}
+              {payloadDetails.device && (
+                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                  <span className="text-slate-400">Device:</span>
+                  <div className="text-slate-200 font-medium mt-1">
+                    {payloadDetails.device.rooted ? 'Rooted' : 'Standard'} 
+                    {payloadDetails.device.os_type && ` · ${payloadDetails.device.os_type}`}
+                  </div>
+                </div>
+              )}
+              {payloadDetails.test_risk_score !== undefined && (
+                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                  <span className="text-slate-400">Injected Risk:</span>
+                  <div className="text-slate-200 font-medium mt-1">
+                    {payloadDetails.test_risk_score} / 100
+                  </div>
+                </div>
+              )}
+              {payloadDetails.context && (
+                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
+                  <span className="text-slate-400">Context:</span>
+                  <div className="text-slate-200 font-medium mt-1">
+                    {payloadDetails.context.mfa_verified === false ? 'MFA Bypassed' : 'Standard'}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Policy Evaluation Details */}
+        <div className="mt-6 pt-4 border-t border-slate-800">
+          <p className="text-xs font-bold text-slate-100 mb-2">Policy Evaluation</p>
+          <div className="space-y-2 text-[11px]">
+            <div className="flex justify-between items-center p-2 bg-slate-900/30 rounded">
+              <span className="text-slate-400">Decision Engine:</span>
+              <span className="text-slate-200 font-medium">Zero Trust Policy Engine</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-slate-900/30 rounded">
+              <span className="text-slate-400">Evaluation Time:</span>
+              <span className="text-slate-200 font-medium">{new Date().toLocaleTimeString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-slate-900/30 rounded">
+              <span className="text-slate-400">Risk Threshold:</span>
+              <span className="text-slate-200 font-medium">75 (Critical)</span>
+            </div>
+            {result.decision === "DENY" && (
+              <div className="p-2 bg-red-900/20 border border-red-500/30 rounded">
+                <span className="text-red-300 text-[10px]">
+                  ⚠️ Access blocked due to elevated risk score exceeding policy threshold
+                </span>
+              </div>
+            )}
+            {result.decision === "MFA_REQUIRED" && (
+              <div className="p-2 bg-amber-900/20 border border-amber-500/30 rounded">
+                <span className="text-amber-300 text-[10px]">
+                  🔐 Additional authentication required for elevated risk access
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
 

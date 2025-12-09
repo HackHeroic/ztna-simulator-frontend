@@ -1,70 +1,160 @@
-# Getting Started with Create React App
+# ZTNA VPN Simulator - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern React-based frontend for the Zero Trust Network Access (ZTNA) VPN Simulator. This application provides a comprehensive dashboard for managing VPN connections, monitoring security events, and simulating attack scenarios.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **VPN Management Dashboard**: Connect, disconnect, and monitor VPN connections
+- **Real-time Activity Logs**: View continuous authentication events and connection activities
+- **Security Overview**: Monitor anomalies, risk scores, and access attempts
+- **Attack Simulator**: Test security policies with various attack scenarios
+- **Role-Based Access Control**: Different views based on user clearance levels
+- **Threat Intelligence**: View and manage threat users (clearance level 3+)
+- **Admin Tools**: Manage resources, risk factors, and policies (admin only)
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Node.js 16+ and npm
+- Backend services running (Auth Server, VPN Gateway, Policy Engine)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Installation
 
-### `npm test`
+1. Navigate to the frontend directory:
+```bash
+cd ztna-simulator-frontend
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Install dependencies:
+```bash
+npm install
+```
 
-### `npm run build`
+## Running the Application
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Start the development server:
+```bash
+npm start
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+The application will be available at `http://localhost:3000`
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Project Structure
 
-### `npm run eject`
+```
+src/
+├── api/              # API client functions
+│   ├── api.js        # General API utilities
+│   ├── policyApi.js  # Policy engine API calls
+│   └── vpnApi.js     # VPN gateway API calls
+├── components/       # React components
+│   ├── dashboard/    # Dashboard-specific components
+│   │   ├── AttackSimulator.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── ThreatUsersPanel.jsx
+│   │   ├── AdminUserLogs.jsx
+│   │   └── ...
+│   ├── ui/           # Reusable UI components
+│   └── VpnPanel.jsx  # VPN Backend Dashboard
+├── hooks/            # Custom React hooks
+│   └── useDashboardData.js
+├── utils/            # Utility functions
+│   ├── userUtils.js  # User role/clearance utilities
+│   ├── formatUtils.js
+│   └── riskUtils.js
+└── App.js            # Main application component
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Key Components
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### VPN Backend Dashboard (`VpnPanel.jsx`)
+- Standalone VPN management interface
+- Real-time connection monitoring
+- Activity logs with continuous auth events
+- Automatic disconnect on window close or internet loss
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Main Dashboard (`Dashboard.jsx`)
+- Comprehensive security overview
+- Role-based component visibility
+- Attack simulation tools
+- Threat intelligence panel (clearance 3+)
+- Admin tools (clearance 5+)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Attack Simulator
+- Quick attack scenarios (Pyongyang login, rooted device, etc.)
+- Extreme attack scenarios (critical threats)
+- Backend-defined scenarios
+- Detailed payload analysis
+- Policy evaluation breakdown
 
-## Learn More
+## User Roles and Clearance Levels
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- **Clearance 1**: Basic user - VPN access only
+- **Clearance 2**: Standard user - Can view access logs
+- **Clearance 3**: Security analyst - Can view threat users
+- **Clearance 4**: Security admin - Can update threat users
+- **Clearance 5**: Admin - Full access to all features
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Environment Variables
 
-### Code Splitting
+Create a `.env` file in the root directory:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```env
+REACT_APP_API_BASE=http://localhost:5000
+REACT_APP_VPN_API_BASE=http://localhost:5001
+REACT_APP_POLICY_API_BASE=http://localhost:5002
+```
 
-### Analyzing the Bundle Size
+## Features
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### Automatic Disconnect
+- VPN connections automatically disconnect when:
+  - Browser window is closed
+  - Internet connection is lost
+  - User navigates away
 
-### Making a Progressive Web App
+### Continuous Authentication Monitoring
+- Real-time display of continuous auth checks
+- Risk score tracking
+- Policy status updates
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Threat Intelligence
+- View threat users based on clearance level
+- Detailed threat activity logs
+- Threat level indicators (critical, high, medium)
 
-### Advanced Configuration
+## Building for Production
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+npm run build
+```
 
-### Deployment
+The build folder will contain the optimized production build.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Troubleshooting
 
-### `npm run build` fails to minify
+### Connection Issues
+- Ensure all backend services are running
+- Check CORS settings in backend
+- Verify API endpoints in `src/api/` files
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Authentication Issues
+- Check token expiration
+- Verify JWT secret matches backend
+- Clear localStorage and re-login
+
+## Development
+
+### Adding New Components
+1. Create component in appropriate directory
+2. Import and add to Dashboard.jsx
+3. Add API calls if needed in `src/api/`
+4. Update user utilities for role-based access
+
+### Styling
+- Uses Tailwind CSS
+- Custom components in `src/components/ui/`
+- Consistent color scheme: orange/amber for security, blue for VPN
+
+## License
+
+See LICENSE file for details.

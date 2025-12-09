@@ -15,12 +15,16 @@ import ContinuousAuthHistory from "./ContinuousAuthHistory";
 import ResourcesList from "./ResourcesList";
 import AdminResourceEditor from "./AdminResourceEditor";
 import AdminRiskFactorsEditor from "./AdminRiskFactorsEditor";
-import { getUserFromToken, isAdmin } from "../../utils/userUtils";
+import ThreatUsersPanel from "./ThreatUsersPanel";
+import AdminUserLogs from "./AdminUserLogs";
+import { getUserFromToken, isAdmin, hasClearance } from "../../utils/userUtils";
 
 export default function Dashboard({ token, onLogout }) {
     const data = useDashboardData(token);
     const user = getUserFromToken(token);
     const isUserAdmin = isAdmin(user);
+    const canViewThreats = hasClearance(user, 3);
+    const canViewAllLogs = hasClearance(user, 2);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-white via-orange-50 to-yellow-50">
@@ -62,6 +66,14 @@ export default function Dashboard({ token, onLogout }) {
                     <ContinuousAuthHistory history={data.continuousAuthHistory} />
                     <ResourcesList resources={data.resources} />
                 </div>
+
+                {canViewThreats && (
+                    <ThreatUsersPanel />
+                )}
+
+                {canViewAllLogs && (
+                    <AdminUserLogs accessMetrics={data.accessMetrics} />
+                )}
 
                 {isUserAdmin && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
