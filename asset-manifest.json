@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/ztna-simulator-frontend/static/css/main.d6e0cf6e.css",
+    "main.js": "/ztna-simulator-frontend/static/js/main.00c10332.js",
+    "static/js/453.9d6fadbb.chunk.js": "/ztna-simulator-frontend/static/js/453.9d6fadbb.chunk.js",
+    "index.html": "/ztna-simulator-frontend/index.html",
+    "main.d6e0cf6e.css.map": "/ztna-simulator-frontend/static/css/main.d6e0cf6e.css.map",
+    "main.00c10332.js.map": "/ztna-simulator-frontend/static/js/main.00c10332.js.map",
+    "453.9d6fadbb.chunk.js.map": "/ztna-simulator-frontend/static/js/453.9d6fadbb.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.d6e0cf6e.css",
+    "static/js/main.00c10332.js"
+  ]
+}
