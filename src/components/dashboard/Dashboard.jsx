@@ -4,6 +4,7 @@ import useDashboardData from "../../hooks/useDashboardData";
 
 import Header from "./Header";
 import VpnCard from "./VpnCard";
+import VpnRoutingTable from "./VpnRoutingTable";
 import SecurityOverview from "./SecurityOverview";
 import ResourceTable from "./ResourceTable";
 import PolicyDeviceContext from "./PolicyDeviceContext";
@@ -27,6 +28,8 @@ export default function Dashboard({ token, onLogout }) {
                 <AttackSimulator refresh={data.refreshAll} />
 
                 <VpnCard connected={data.connected} setConnected={() => { }} />
+
+                <VpnRoutingTable />
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                     <div className="xl:col-span-2">
