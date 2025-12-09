@@ -1,4 +1,4 @@
-import React, { useState, useEffect,useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Flame,
   Bug,
@@ -16,22 +16,23 @@ import { simulateRisk } from "../../api/policyApi";
 
 
 export default function AttackSimulator({ refresh }) {
+  const [payloadDetails, setPayloadDetails] = useState(null);
   const audioRef = useRef(null);
 
-const playSound = (file) => {
-  // Stop previous sound if exists
-  if (audioRef.current) {
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-  }
+  const playSound = (file) => {
+    // Stop previous sound if exists
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
 
-  // Create and play new sound
-  const audio = new Audio(file);
-  audio.volume = 1.0;
-  audio.play().catch(() => {});
-  
-  audioRef.current = audio;
-};
+    // Create and play new sound
+    const audio = new Audio(file);
+    audio.volume = 1.0;
+    audio.play().catch(() => { });
+
+    audioRef.current = audio;
+  };
 
   const token = localStorage.getItem("token");
   const email = token ? JSON.parse(atob(token.split(".")[1])).email : "unknown@user";
@@ -58,8 +59,8 @@ const playSound = (file) => {
       }, 200);
     }
   }, [result]);
-  
-  
+
+
 
   /* ----------------------------------------------------------
      Fetch backend scenarios
@@ -104,11 +105,14 @@ const playSound = (file) => {
       // STEP 2 → Policy Engine evaluates
       pushTimeline("🚀 Dispatching to Policy Engine…", "info");
       await wait(400);
+      const finalPayload = { user: { email }, ...payload };
+setPayloadDetails(finalPayload);
 
       const response = await simulateRisk({
         user: { email },
         ...payload,
       });
+      console.log("response", response)
 
       setCurrentStep(2);
       pushTimeline("🧠 Policy Engine correlating signals…", "info");
@@ -124,9 +128,9 @@ const playSound = (file) => {
 
       pushTimeline(`🎯 Final decision: ${response.decision}`, "success");
       // 🔊 Play horror sound only when DENY
-if (response.decision === "DENY") {
-  playSound("/sounds/holiday_movie_bgm.mp3");
-}
+      if (response.decision === "DENY") {
+        playSound("/sounds/holiday_movie_bgm.mp3");
+      }
 
 
       setResult(response);
@@ -336,9 +340,8 @@ if (response.decision === "DENY") {
                 <div className="col-span-1 flex justify-center">
                   <ChevronRight
                     size={20}
-                    className={`transition-all ${
-                      index < currentStep ? "text-orange-400" : "text-slate-600"
-                    }`}
+                    className={`transition-all ${index < currentStep ? "text-orange-400" : "text-slate-600"
+                      }`}
                   />
                 </div>
               )}
@@ -386,8 +389,8 @@ if (response.decision === "DENY") {
       score >= 90
         ? "bg-red-500 shadow-[0_0_16px_rgba(248,113,113,0.9)]"
         : score >= 60
-        ? "bg-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.9)]"
-        : "bg-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.9)]";
+          ? "bg-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.9)]"
+          : "bg-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.9)]";
 
     return (
       <div className="flex flex-col items-center gap-3 mt-4">
@@ -423,19 +426,18 @@ if (response.decision === "DENY") {
           {decision === "DENY"
             ? "NEON SKULL SAYS: BLOCK"
             : decision === "MFA_REQUIRED"
-            ? "NEON SKULL SAYS: CHALLENGE"
-            : "NEON SKULL SAYS: ALLOW"}
+              ? "NEON SKULL SAYS: CHALLENGE"
+              : "NEON SKULL SAYS: ALLOW"}
         </p>
 
         <div
           className={`px-3 py-1 rounded-full text-[11px] font-bold border
-          ${
-            isCritical
+          ${isCritical
               ? "bg-red-600/30 text-red-200 border-red-500/50"
               : isHigh
-              ? "bg-amber-500/20 text-amber-200 border-amber-400/60"
-              : "bg-emerald-500/20 text-emerald-200 border-emerald-400/60"
-          }`}
+                ? "bg-amber-500/20 text-amber-200 border-amber-400/60"
+                : "bg-emerald-500/20 text-emerald-200 border-emerald-400/60"
+            }`}
         >
           {isCritical ? "CRITICAL THREAT" : isHigh ? "HIGH RISK" : "LOW RISK"}
         </div>
@@ -448,7 +450,7 @@ if (response.decision === "DENY") {
   ---------------------------------------------------------- */
   const ResultPanel = () =>
     result && (
-      <div ref={resultRef} 
+      <div ref={resultRef}
         className="mt-8 p-6 rounded-2xl shadow-xl border border-orange-400/20 
       bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900/90 
       backdrop-blur-xl animate-[fadeIn_0.4s_ease-out]"
@@ -468,13 +470,12 @@ if (response.decision === "DENY") {
         <p
           className={`text-3xl font-extrabold tracking-wide text-center mb-1
           animate-[popIn_0.4s_ease-out]
-          ${
-            result.decision === "DENY"
+          ${result.decision === "DENY"
               ? "text-red-500 drop-shadow-[0_0_6px_rgba(248,113,113,0.9)]"
               : result.decision === "MFA_REQUIRED"
-              ? "text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.9)]"
-              : "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.9)]"
-          }`}
+                ? "text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.9)]"
+                : "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.9)]"
+            }`}
         >
           {result.decision}
         </p>
@@ -558,11 +559,10 @@ if (response.decision === "DENY") {
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                mode === m
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${mode === m
                   ? "bg-gradient-to-r from-orange-500 to-amber-400 text-slate-950 border-orange-400 shadow-lg"
                   : "bg-slate-950/90 text-slate-200 border-slate-700 hover:border-orange-400 hover:text-orange-200"
-              }`}
+                }`}
             >
               {m.toUpperCase()}
             </button>

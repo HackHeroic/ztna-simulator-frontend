@@ -23,20 +23,23 @@ export default function SecurityOverview({
   recentAnomalyCount,
   anomalyDetails,
   anomalyRiskLevel,
-  sessionStatus,
+  sessionStatus = {},
 }) {
+
   /* ----------------------------------------------------
-     🔥 FIXED LOADING CONDITION (PREVENT INFINITE LOOPS)
+     🔥 FIXED + OPTIMIZED LOADING CONDITION
+     Prevent skeleton flicker + infinite rerender loops
   ---------------------------------------------------- */
   const dataNotReady =
     loading ||
-    riskScore === null ||
-    riskScore === undefined ||
-    ip === null ||
-    ip === undefined ||
-    sessionStatus === null ||
-    sessionStatus === undefined;
+    riskScore == null ||
+    !ip ||
+    sessionStatus?.status == null;
 
+
+  /* ----------------------------------------------------
+     🔥 SKELETON (Shown ONLY when data is truly missing)
+  ---------------------------------------------------- */
   if (dataNotReady) {
     return (
       <Card>
@@ -63,7 +66,7 @@ export default function SecurityOverview({
             ))}
           </div>
 
-          {/* Network info + session box */}
+          {/* Network + session box */}
           <div className="flex justify-between gap-6">
             <div className="flex-1 space-y-4">
               <div className="h-4 w-32 bg-orange-200/50 rounded-md animate-pulse"></div>
@@ -75,11 +78,11 @@ export default function SecurityOverview({
 
             <div
               className="
-              w-44 h-24 rounded-xl 
-              bg-orange-100/40 
-              border border-orange-200/60 
-              animate-pulse
-            "
+                w-44 h-24 rounded-xl 
+                bg-orange-100/40 
+                border border-orange-200/60 
+                animate-pulse
+              "
             ></div>
           </div>
 
@@ -101,15 +104,18 @@ export default function SecurityOverview({
   }
 
   /* ----------------------------------------------------
-     🔥 SAFE FALLBACKS FOR LOCATION FIELDS
+     🔥 SAFE FALLBACKS 
   ---------------------------------------------------- */
   const city = location.city || "Unknown";
   const country = location.country || "Unknown";
   const isp = location.isp || "Unknown";
-  const sessionState = sessionStatus.status?.toUpperCase() || "UNKNOWN";
+
+  const sessionState = sessionStatus?.status?.toUpperCase() || "UNKNOWN";
+  const lastVerified = sessionStatus?.last_verified || "N/A";
+  const sessionRisk = sessionStatus?.risk_score ?? 0;
 
   /* ----------------------------------------------------
-     ALL DATA READY — NORMAL VIEW
+     NORMAL VIEW (Data Loaded Successfully)
   ---------------------------------------------------- */
   const meta = getRiskMeta(riskScore);
 
@@ -122,25 +128,23 @@ export default function SecurityOverview({
           <AlertTriangle className="text-orange-500" />
           Security Overview
         </h2>
-        <Badge color={meta.badge}>Overall: {meta.label}</Badge>
+        <Badge color={meta.badge}>
+          Overall: {meta.label}
+        </Badge>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <Stat icon={AlertTriangle} label="Risk Score" value={riskScore} />
-
-        <Stat
-          icon={MapPin}
-          label="Location"
-          value={`${city}, ${country}`}
-        />
-
+        <Stat icon={MapPin} label="Location" value={`${city}, ${country}`} />
         <Stat icon={Activity} label="Anomalies" value={anomalyCount ?? 0} />
       </div>
 
       {/* IP + ISP + Session */}
       <div className="flex justify-between gap-6">
+        {/* Left column */}
         <div className="flex-1 space-y-3">
+
           <div>
             <p className="font-medium">External IP</p>
             <p className="flex items-center gap-1">
@@ -154,16 +158,16 @@ export default function SecurityOverview({
               <Wifi size={14} /> {isp}
             </p>
           </div>
+
         </div>
 
+        {/* Session Box */}
         <div className="p-4 w-48 border rounded-xl bg-orange-50 border-orange-200">
           <p className="font-semibold flex items-center gap-1 text-orange-600">
             <Radio className="text-orange-600" /> Session: {sessionState}
           </p>
-          <p className="text-sm mt-1">
-            Last verified: {sessionStatus.last_verified || "N/A"}
-          </p>
-          <p className="text-sm">Risk: {sessionStatus.risk_score ?? 0}</p>
+          <p className="text-sm mt-1">Last verified: {lastVerified}</p>
+          <p className="text-sm">Risk: {sessionRisk}</p>
         </div>
       </div>
 
@@ -172,9 +176,11 @@ export default function SecurityOverview({
         <p className="font-medium mb-2">Risk Factors</p>
 
         <ul className="list-disc ml-4 space-y-1">
-          {(riskFactors.length > 0 ? riskFactors : ["No risk factors"] ).map((f, i) => (
-            <li key={i}>{f}</li>
-          ))}
+          {(riskFactors.length > 0 ? riskFactors : ["No risk factors"]).map(
+            (f, i) => (
+              <li key={i}>{f}</li>
+            )
+          )}
         </ul>
       </div>
 

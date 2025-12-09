@@ -1,5 +1,5 @@
 /* ============================================================
-   🌐 POLICY API — FINAL + DEVICE NORMALIZATION
+   🌐 POLICY API — FINAL + DEVICE NORMALIZATION + FULLY STABLE
    ============================================================ */
 
    const API_BASE = "http://localhost:5002";
@@ -47,16 +47,17 @@
        os_version = "5.0";
      }
    
-     // Basic encryption guess (cannot know real encryption from JS)
-     const encrypted = window.isSecureContext; // true on HTTPS
-     
+     // Browser-safe approximations
+     const encrypted = window.isSecureContext;
+   
      return {
        os_type,
        os_version,
        encrypted,
-       rooted: false, // browser cannot detect root
+       rooted: false,
        mdm_enrolled: false,
-       // include original browser metadata for debugging
+   
+       // Debug / metadata
        user_agent: rawDevice.userAgent,
        screen: rawDevice.screen,
        timezone: rawDevice.timezone,
@@ -66,7 +67,7 @@
    }
    
    /* ------------------------------------------------------------
-      📡 POST helper with token support
+      📡 POST helper
    ------------------------------------------------------------- */
    async function post(url, body = {}, token = null) {
      const headers = { "Content-Type": "application/json" };
@@ -93,18 +94,18 @@
    }
    
    /* ------------------------------------------------------------
-      1️⃣ PUBLIC IP + GEO LOCATION DETECTION + DEVICE
+      1️⃣ PUBLIC IP + GEO LOCATION + DEVICE NORMALIZATION
    ------------------------------------------------------------- */
    export async function fetchLocation() {
      try {
-       // 1. Get public IP
+       // Get public IP
        const ipResponse = await fetch("https://api64.ipify.org?format=json");
        const { ip } = await ipResponse.json();
    
-       // 2. Ask backend for geo-location
+       // Get geo-location from backend
        const locRes = await post(`${API_BASE}/api/policy/location-detect`, { ip });
    
-       // 3. Browser device detection (raw)
+       // Browser device raw object
        const browserDevice = {
          userAgent: navigator.userAgent,
          platform: navigator.platform,
@@ -116,7 +117,7 @@
        return {
          ip,
          location: locRes.data?.location || {},
-         device: normalizeDevice(browserDevice), // ⭐ normalized for backend
+         device: normalizeDevice(browserDevice),
        };
      } catch (err) {
        console.error("Location + Device fetch failed:", err);
@@ -125,7 +126,7 @@
    }
    
    /* ------------------------------------------------------------
-      2️⃣ RESOURCE EVALUATION (Zero Trust Decision)
+      2️⃣ RESOURCE EVALUATION (Zero Trust)
    ------------------------------------------------------------- */
    export async function evaluateResource(resource, client) {
      const token = localStorage.getItem("token");
@@ -134,27 +135,25 @@
      const payload = {
        user: { email },
        resource,
-       device: client.device,  // ⭐ already normalized earlier
+       device: client.device || {},
        location: client.location || {},
        client_ip: client.ip,
        context: { mfa_verified: true },
      };
    
      const res = await post(`${API_BASE}/api/policy/evaluate`, payload, token);
-   
-     console.log("🚀 Policy Response:", res.data);
-     return res.data;
+     return res.data || {};
    }
    
    /* ------------------------------------------------------------
-      3️⃣ DATABASE PROD RISK CHECK
+      3️⃣ MAIN RISK CHECK (DB-PROD)
    ------------------------------------------------------------- */
    export async function fetchRiskData(client) {
      return evaluateResource("database-prod", client);
    }
    
    /* ------------------------------------------------------------
-      4️⃣ FETCH USER ANOMALIES
+      4️⃣ USER ANOMALIES
    ------------------------------------------------------------- */
    export async function fetchAnomalies() {
      const token = localStorage.getItem("token");
@@ -166,25 +165,30 @@
        token
      );
    
-     return res.data;
+     return res.data || {};
    }
    
    /* ------------------------------------------------------------
-      5️⃣ CONTINUOUS SESSION STATUS
+      5️⃣ SESSION STATUS (Continuous Auth)
    ------------------------------------------------------------- */
    export async function fetchSessionStatus() {
      const token = localStorage.getItem("token");
      if (!token) return null;
    
-     const res = await fetch(`${API_BASE}/api/policy/session-status`, {
-       method: "POST",
-       headers: {
-         "Content-Type": "application/json",
-         Authorization: `Bearer ${token}`,
-       },
-     });
+     try {
+       const res = await fetch(`${API_BASE}/api/policy/session-status`, {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+           Authorization: `Bearer ${token}`,
+         },
+       });
    
-     return res.json();
+       return res.json();
+     } catch (err) {
+       console.error("session-status failed:", err);
+       return null;
+     }
    }
    
    /* ------------------------------------------------------------
@@ -204,7 +208,7 @@
    }
    
    /* ------------------------------------------------------------
-      8️⃣ SIMULATE RISK (Attack Builder + Scenarios)
+      8️⃣ SIMULATE RISK (Attack Simulator)
    ------------------------------------------------------------- */
    export async function simulateRisk(payload) {
      const token = localStorage.getItem("token");
@@ -223,6 +227,6 @@
        token
      );
    
-     return res.data;
+     return res.data || {};
    }
    
