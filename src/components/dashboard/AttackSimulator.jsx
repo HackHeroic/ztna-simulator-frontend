@@ -18,20 +18,65 @@ import { simulateRisk } from "../../api/policyApi";
 export default function AttackSimulator({ refresh }) {
   const [payloadDetails, setPayloadDetails] = useState(null);
   const audioRef = useRef(null);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+
+  // Preload audio files for better performance
+  useEffect(() => {
+    const preloadAudio = (src) => {
+      const audio = new Audio(src);
+      audio.preload = 'auto';
+      audio.volume = 0.7;
+    };
+    
+    try {
+      preloadAudio('/sounds/rightanswer-95219.mp3');
+      preloadAudio('/sounds/holiday_movie_bgm.mp3');
+    } catch (error) {
+      console.warn("Audio preload failed:", error);
+    }
+  }, []);
 
   const playSound = (file) => {
-    // Stop previous sound if exists
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    if (!audioEnabled) return;
+    
+    try {
+      // Stop previous sound if exists
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+
+      // Create and play new sound
+      const audio = new Audio(file);
+      audio.volume = 0.7; // Slightly lower volume for better UX
+      
+      // Set up error handlers
+      audio.onerror = (e) => {
+        console.warn("Audio file error:", file, e);
+        setAudioEnabled(false); // Disable audio if file fails to load
+      };
+      
+      // Handle audio play promise
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            // Audio started playing successfully
+            audioRef.current = audio;
+            console.log("Sound playing:", file);
+          })
+          .catch((error) => {
+            // Auto-play was prevented (browser policy)
+            console.warn("Audio autoplay blocked:", error.name);
+            // Don't disable audio - this is just autoplay policy
+            // Audio will work after user interaction
+          });
+      }
+    } catch (error) {
+      console.warn("Sound error:", error);
     }
-
-    // Create and play new sound
-    const audio = new Audio(file);
-    audio.volume = 1.0;
-    audio.play().catch(() => { });
-
-    audioRef.current = audio;
   };
 
   const token = localStorage.getItem("token");
@@ -621,14 +666,35 @@ setPayloadDetails(finalPayload);
       </div>
 
       <div className="relative z-10">
-        <h2 className="font-extrabold text-slate-50 flex items-center gap-2 text-sm">
-          <Flame className="text-orange-400" size={18} />
-          Attack Simulator · Neon Skull Engine
-        </h2>
-        <p className="text-[11px] text-slate-400 mt-1">
-          Launch synthetic adversarial scenarios & watch the policy engine react in
-          real-time.
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="font-extrabold text-slate-50 flex items-center gap-2 text-sm">
+              <Flame className="text-orange-400" size={18} />
+              Attack Simulator · Neon Skull Engine
+            </h2>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Launch synthetic adversarial scenarios & watch the policy engine react in
+              real-time.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setAudioEnabled(!audioEnabled);
+              // Test sound when enabling
+              if (!audioEnabled) {
+                playSound('/sounds/rightanswer-95219.mp3');
+              }
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              audioEnabled
+                ? "bg-green-600/20 text-green-300 border-green-500/50 hover:bg-green-600/30"
+                : "bg-gray-600/20 text-gray-400 border-gray-500/50 hover:bg-gray-600/30"
+            }`}
+            title={audioEnabled ? "Sound enabled - Click to disable" : "Sound disabled - Click to enable"}
+          >
+            {audioEnabled ? "🔊 Sound ON" : "🔇 Sound OFF"}
+          </button>
+        </div>
 
         {/* Mode Selector */}
         <div className="flex gap-2 mt-4">
